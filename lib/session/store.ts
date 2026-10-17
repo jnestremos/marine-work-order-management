@@ -5,7 +5,7 @@ import {
   persist,
   type StateStorage,
 } from "zustand/middleware"
-import { marineFixture } from "@/lib/fixtures/marine"
+import { catalogStore } from "@/lib/catalog/store"
 import { localStorageAdapter } from "@/lib/session/storage"
 import type {
   MarineFixture,
@@ -48,16 +48,34 @@ export function membersFor(
 export function defaultSession(fixture: MarineFixture): SessionState {
   const vessel = activeVessels(fixture)[0]
   if (!vessel) {
-    throw new Error("Fixture has no active vessel")
+    return {
+      vesselId: "",
+      role: "admin",
+      memberId: null,
+    }
   }
   const admin = membersFor(fixture, vessel.id, "admin")[0]
-  if (!admin) {
-    throw new Error("Fixture has no active admin on the default vessel")
+  if (admin) {
+    return {
+      vesselId: vessel.id,
+      role: "admin",
+      memberId: admin.id,
+    }
+  }
+  for (const role of ROLES) {
+    const member = membersFor(fixture, vessel.id, role)[0]
+    if (member) {
+      return {
+        vesselId: vessel.id,
+        role,
+        memberId: member.id,
+      }
+    }
   }
   return {
     vesselId: vessel.id,
     role: "admin",
-    memberId: admin.id,
+    memberId: null,
   }
 }
 
@@ -109,6 +127,13 @@ export function resolveSession(
     return { session: fallback, shouldWrite: true }
   }
 
+  if (session.vesselId === "") {
+    if (fallback.vesselId === "") {
+      return { session, shouldWrite: false }
+    }
+    return { session: fallback, shouldWrite: true }
+  }
+
   const vessel = fixture.vessels.find((item) => item.id === session.vesselId)
   if (!vessel || !vessel.active) {
     return { session: fallback, shouldWrite: true }
@@ -136,7 +161,7 @@ function sessionEnvelope(session: SessionState): string {
 
 function persistStorage(
   storage: SessionStorage,
-  fixture: MarineFixture,
+  getCatalog: () => MarineFixture,
 ): StateStorage {
   return {
     getItem: (name) => {
@@ -146,7 +171,7 @@ function persistStorage(
       } catch {
         raw = null
       }
-      const { session, shouldWrite } = resolveSession(raw, fixture)
+      const { session, shouldWrite } = resolveSession(raw, getCatalog())
       const next = sessionEnvelope(session)
       if (shouldWrite) {
         try {
@@ -189,26 +214,26 @@ export type SessionStore = SessionState & {
   setVesselId: (vesselId: string) => void
   setRole: (role: Role) => void
   setMemberId: (memberId: string) => void
+  syncFromCatalog: () => void
 }
 
-export function createSessionStore(
-  deps: MarineFixture & { storage: SessionStorage },
-) {
-  const fixture: MarineFixture = {
-    vessels: deps.vessels,
-    members: deps.members,
-    assignments: deps.assignments,
-  }
+export function createSessionStore(deps: {
+  getCatalog: () => MarineFixture
+  storage: SessionStorage
+}) {
+  const getCatalog = deps.getCatalog
 
   return createStore<SessionStore>()(
     persist(
       (set, get) => ({
-        ...defaultSession(fixture),
+        ...defaultSession(getCatalog()),
         hasHydrated: false,
         setHasHydrated: (hasHydrated) => set({ hasHydrated }),
-        vesselOptions: () => activeVessels(fixture),
-        memberOptions: () => membersFor(fixture, get().vesselId, get().role),
+        vesselOptions: () => activeVessels(getCatalog()),
+        memberOptions: () =>
+          membersFor(getCatalog(), get().vesselId, get().role),
         setVesselId: (vesselId) => {
+          const fixture = getCatalog()
           const vessel = fixture.vessels.find(
             (item) => item.id === vesselId && item.active,
           )
@@ -233,23 +258,46 @@ export function createSessionStore(
           if (!isRole(role)) {
             return
           }
-          const options = membersFor(fixture, get().vesselId, role)
+          const options = membersFor(getCatalog(), get().vesselId, role)
           set({ role, memberId: options[0]?.id ?? null })
         },
         setMemberId: (memberId) => {
-          const match = membersFor(fixture, get().vesselId, get().role).find(
-            (member) => member.id === memberId,
-          )
+          const match = membersFor(
+            getCatalog(),
+            get().vesselId,
+            get().role,
+          ).find((member) => member.id === memberId)
           if (!match) {
             return
           }
           set({ memberId })
         },
+        syncFromCatalog: () => {
+          const fixture = getCatalog()
+          const current: SessionState = {
+            vesselId: get().vesselId,
+            role: get().role,
+            memberId: get().memberId,
+          }
+          const { session } = resolveSession(
+            sessionEnvelope(current),
+            fixture,
+          )
+          if (
+            session.vesselId !== current.vesselId ||
+            session.role !== current.role ||
+            session.memberId !== current.memberId
+          ) {
+            set(session)
+          }
+        },
       }),
       {
         name: SESSION_STORAGE_KEY,
         skipHydration: true,
-        storage: createJSONStorage(() => persistStorage(deps.storage, fixture)),
+        storage: createJSONStorage(() =>
+          persistStorage(deps.storage, getCatalog),
+        ),
         partialize: (state) => ({
           vesselId: state.vesselId,
           role: state.role,
@@ -264,7 +312,7 @@ export function createSessionStore(
 }
 
 export const sessionStore = createSessionStore({
-  ...marineFixture,
+  getCatalog: () => catalogStore.getState().asFixture(),
   storage: localStorageAdapter,
 })
 

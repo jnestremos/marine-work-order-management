@@ -121,7 +121,10 @@ function memoryStorage(): SessionStorage {
 
 describe("createSessionStore actions", () => {
   function store() {
-    return createSessionStore({ ...marineFixture, storage: memoryStorage() })
+    return createSessionStore({
+      getCatalog: () => marineFixture,
+      storage: memoryStorage(),
+    })
   }
 
   it("resolves a new store to MV Horizon, Admin, and Avery Chen", () => {
@@ -200,7 +203,10 @@ describe("createSessionStore actions", () => {
 describe("createSessionStore persistence", () => {
   it("writes the default envelope when storage is empty", async () => {
     const storage = memoryStorage()
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({
+      getCatalog: () => marineFixture,
+      storage,
+    })
     await session.persist.rehydrate()
     expect(storage.getItem(SESSION_STORAGE_KEY)).toBe(
       envelope(defaultSession(marineFixture)),
@@ -214,7 +220,10 @@ describe("createSessionStore persistence", () => {
     storage.setItem = () => {
       throw new Error("quota")
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({
+      getCatalog: () => marineFixture,
+      storage,
+    })
     session.getState().setRole("captain")
     expect(session.getState()).toMatchObject({
       vesselId: "vessel_horizon",
@@ -228,7 +237,10 @@ describe("createSessionStore persistence", () => {
     storage.setItem = () => {
       throw new Error("quota")
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({
+      getCatalog: () => marineFixture,
+      storage,
+    })
     await session.persist.rehydrate()
     expect(session.getState()).toMatchObject(fallback)
     expect(session.getState().hasHydrated).toBe(true)
@@ -239,7 +251,10 @@ describe("createSessionStore persistence", () => {
     storage.getItem = () => {
       throw new Error("denied")
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({
+      getCatalog: () => marineFixture,
+      storage,
+    })
     await session.persist.rehydrate()
     expect(session.getState().hasHydrated).toBe(true)
     expect(session.getState()).toMatchObject(fallback)
@@ -260,10 +275,35 @@ describe("createSessionStore persistence", () => {
       writes += 1
       write(name, value)
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({
+      getCatalog: () => marineFixture,
+      storage,
+    })
     await session.persist.rehydrate()
     expect(session.getState()).toMatchObject(saved)
     expect(writes).toBe(0)
     expect(storage.getItem(SESSION_STORAGE_KEY)).toBe(raw)
+  })
+
+  it("syncs the session when the catalog drops the current member", () => {
+    let catalog = structuredClone(marineFixture)
+    const session = createSessionStore({
+      getCatalog: () => catalog,
+      storage: memoryStorage(),
+    })
+    session.getState().setRole("crew")
+    expect(session.getState().memberId).toBe("member_casey")
+    catalog = {
+      ...catalog,
+      members: catalog.members.map((member) =>
+        member.id === "member_casey" ? { ...member, active: false } : member,
+      ),
+    }
+    session.getState().syncFromCatalog()
+    expect(session.getState()).toMatchObject({
+      vesselId: "vessel_horizon",
+      role: "admin",
+      memberId: "member_avery",
+    })
   })
 })
