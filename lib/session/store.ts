@@ -1,11 +1,13 @@
+import { createStore, type StoreApi } from "zustand/vanilla"
 import type {
   MarineFixture,
   Member,
   Role,
   SessionState,
+  SessionStorage,
   Vessel,
 } from "@/lib/session/types"
-import { isRole } from "@/lib/session/types"
+import { isRole, ROLES } from "@/lib/session/types"
 
 export type { SessionState }
 
@@ -118,4 +120,69 @@ export function resolveSession(
   }
 
   return { session, shouldWrite: false }
+}
+
+export type SessionStore = SessionState & {
+  hasHydrated: boolean
+  setHasHydrated: (hasHydrated: boolean) => void
+  vesselOptions: () => Vessel[]
+  memberOptions: () => Member[]
+  setVesselId: (vesselId: string) => void
+  setRole: (role: Role) => void
+  setMemberId: (memberId: string) => void
+}
+
+export function createSessionStore(
+  deps: MarineFixture & { storage: SessionStorage },
+): StoreApi<SessionStore> {
+  const fixture: MarineFixture = {
+    vessels: deps.vessels,
+    members: deps.members,
+    assignments: deps.assignments,
+  }
+
+  return createStore<SessionStore>()((set, get) => ({
+    ...defaultSession(fixture),
+    hasHydrated: false,
+    setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+    vesselOptions: () => activeVessels(fixture),
+    memberOptions: () => membersFor(fixture, get().vesselId, get().role),
+    setVesselId: (vesselId) => {
+      const vessel = fixture.vessels.find(
+        (item) => item.id === vesselId && item.active,
+      )
+      if (!vessel) {
+        return
+      }
+      const current = membersFor(fixture, vesselId, get().role)
+      if (current.length > 0) {
+        set({ vesselId, memberId: current[0].id })
+        return
+      }
+      for (const role of ROLES) {
+        const options = membersFor(fixture, vesselId, role)
+        if (options.length > 0) {
+          set({ vesselId, role, memberId: options[0].id })
+          return
+        }
+      }
+      set({ vesselId, memberId: null })
+    },
+    setRole: (role) => {
+      if (!isRole(role)) {
+        return
+      }
+      const options = membersFor(fixture, get().vesselId, role)
+      set({ role, memberId: options[0]?.id ?? null })
+    },
+    setMemberId: (memberId) => {
+      const match = membersFor(fixture, get().vesselId, get().role).find(
+        (member) => member.id === memberId,
+      )
+      if (!match) {
+        return
+      }
+      set({ memberId })
+    },
+  }))
 }
