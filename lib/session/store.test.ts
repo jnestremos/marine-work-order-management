@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { marineFixture } from "@/lib/fixtures/marine"
-import type { SessionStorage } from "@/lib/session/types"
-import { createSessionStore, resolveSession, type SessionState } from "@/lib/session/store"
+import { SESSION_STORAGE_KEY, type SessionStorage } from "@/lib/session/types"
+import {
+  createSessionStore,
+  defaultSession,
+  resolveSession,
+  type SessionState,
+} from "@/lib/session/store"
 
 const fallback: SessionState = {
   vesselId: "vessel_horizon",
@@ -174,5 +179,43 @@ describe("createSessionStore actions", () => {
     const session = store()
     session.getState().setRole("passenger" as "admin")
     expect(session.getState()).toMatchObject(fallback)
+  })
+})
+
+describe("createSessionStore persistence", () => {
+  it("writes the default envelope when storage is empty", async () => {
+    const storage = memoryStorage()
+    const session = createSessionStore({ ...marineFixture, storage })
+    await session.persist.rehydrate()
+    expect(storage.getItem(SESSION_STORAGE_KEY)).toBe(
+      envelope(defaultSession(marineFixture)),
+    )
+    expect(session.getState().hasHydrated).toBe(true)
+    expect(session.getState()).toMatchObject(fallback)
+  })
+
+  it("keeps the in-memory session when setItem throws", () => {
+    const storage = memoryStorage()
+    storage.setItem = () => {
+      throw new Error("quota")
+    }
+    const session = createSessionStore({ ...marineFixture, storage })
+    session.getState().setRole("captain")
+    expect(session.getState()).toMatchObject({
+      vesselId: "vessel_horizon",
+      role: "captain",
+      memberId: "member_blake",
+    })
+  })
+
+  it("keeps the default in memory when the restore write throws", async () => {
+    const storage = memoryStorage()
+    storage.setItem = () => {
+      throw new Error("quota")
+    }
+    const session = createSessionStore({ ...marineFixture, storage })
+    await session.persist.rehydrate()
+    expect(session.getState()).toMatchObject(fallback)
+    expect(session.getState().hasHydrated).toBe(true)
   })
 })

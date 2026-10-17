@@ -1,4 +1,12 @@
-import { createStore, type StoreApi } from "zustand/vanilla"
+import { useStore } from "zustand"
+import { createStore } from "zustand/vanilla"
+import {
+  createJSONStorage,
+  persist,
+  type StateStorage,
+} from "zustand/middleware"
+import { marineFixture } from "@/lib/fixtures/marine"
+import { localStorageAdapter } from "@/lib/session/storage"
 import type {
   MarineFixture,
   Member,
@@ -7,9 +15,9 @@ import type {
   SessionStorage,
   Vessel,
 } from "@/lib/session/types"
-import { isRole, ROLES } from "@/lib/session/types"
+import { isRole, ROLES, SESSION_STORAGE_KEY } from "@/lib/session/types"
 
-export type { SessionState }
+export type { SessionState } from "@/lib/session/types"
 
 export type ResolvedSession = {
   session: SessionState
@@ -122,6 +130,44 @@ export function resolveSession(
   return { session, shouldWrite: false }
 }
 
+function sessionEnvelope(session: SessionState): string {
+  return JSON.stringify({ state: session, version: 0 })
+}
+
+function persistStorage(
+  storage: SessionStorage,
+  fixture: MarineFixture,
+): StateStorage {
+  return {
+    getItem: (name) => {
+      const { session, shouldWrite } = resolveSession(storage.getItem(name), fixture)
+      const next = sessionEnvelope(session)
+      if (shouldWrite) {
+        try {
+          storage.setItem(name, next)
+        } catch {
+          // The caller still receives the resolved session.
+        }
+      }
+      return next
+    },
+    setItem: (name, value) => {
+      try {
+        storage.setItem(name, value)
+      } catch {
+        // Memory already holds the next session.
+      }
+    },
+    removeItem: (name) => {
+      try {
+        storage.removeItem(name)
+      } catch {
+        // Nothing in memory depends on the delete.
+      }
+    },
+  }
+}
+
 export type SessionStore = SessionState & {
   hasHydrated: boolean
   setHasHydrated: (hasHydrated: boolean) => void
@@ -134,55 +180,81 @@ export type SessionStore = SessionState & {
 
 export function createSessionStore(
   deps: MarineFixture & { storage: SessionStorage },
-): StoreApi<SessionStore> {
+) {
   const fixture: MarineFixture = {
     vessels: deps.vessels,
     members: deps.members,
     assignments: deps.assignments,
   }
 
-  return createStore<SessionStore>()((set, get) => ({
-    ...defaultSession(fixture),
-    hasHydrated: false,
-    setHasHydrated: (hasHydrated) => set({ hasHydrated }),
-    vesselOptions: () => activeVessels(fixture),
-    memberOptions: () => membersFor(fixture, get().vesselId, get().role),
-    setVesselId: (vesselId) => {
-      const vessel = fixture.vessels.find(
-        (item) => item.id === vesselId && item.active,
-      )
-      if (!vessel) {
-        return
-      }
-      const current = membersFor(fixture, vesselId, get().role)
-      if (current.length > 0) {
-        set({ vesselId, memberId: current[0].id })
-        return
-      }
-      for (const role of ROLES) {
-        const options = membersFor(fixture, vesselId, role)
-        if (options.length > 0) {
-          set({ vesselId, role, memberId: options[0].id })
-          return
-        }
-      }
-      set({ vesselId, memberId: null })
-    },
-    setRole: (role) => {
-      if (!isRole(role)) {
-        return
-      }
-      const options = membersFor(fixture, get().vesselId, role)
-      set({ role, memberId: options[0]?.id ?? null })
-    },
-    setMemberId: (memberId) => {
-      const match = membersFor(fixture, get().vesselId, get().role).find(
-        (member) => member.id === memberId,
-      )
-      if (!match) {
-        return
-      }
-      set({ memberId })
-    },
-  }))
+  return createStore<SessionStore>()(
+    persist(
+      (set, get) => ({
+        ...defaultSession(fixture),
+        hasHydrated: false,
+        setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+        vesselOptions: () => activeVessels(fixture),
+        memberOptions: () => membersFor(fixture, get().vesselId, get().role),
+        setVesselId: (vesselId) => {
+          const vessel = fixture.vessels.find(
+            (item) => item.id === vesselId && item.active,
+          )
+          if (!vessel) {
+            return
+          }
+          const current = membersFor(fixture, vesselId, get().role)
+          if (current.length > 0) {
+            set({ vesselId, memberId: current[0].id })
+            return
+          }
+          for (const role of ROLES) {
+            const options = membersFor(fixture, vesselId, role)
+            if (options.length > 0) {
+              set({ vesselId, role, memberId: options[0].id })
+              return
+            }
+          }
+          set({ vesselId, memberId: null })
+        },
+        setRole: (role) => {
+          if (!isRole(role)) {
+            return
+          }
+          const options = membersFor(fixture, get().vesselId, role)
+          set({ role, memberId: options[0]?.id ?? null })
+        },
+        setMemberId: (memberId) => {
+          const match = membersFor(fixture, get().vesselId, get().role).find(
+            (member) => member.id === memberId,
+          )
+          if (!match) {
+            return
+          }
+          set({ memberId })
+        },
+      }),
+      {
+        name: SESSION_STORAGE_KEY,
+        skipHydration: true,
+        storage: createJSONStorage(() => persistStorage(deps.storage, fixture)),
+        partialize: (state) => ({
+          vesselId: state.vesselId,
+          role: state.role,
+          memberId: state.memberId,
+        }),
+        onRehydrateStorage: () => (state) => {
+          state?.setHasHydrated(true)
+        },
+      },
+    ),
+  )
+}
+
+export const sessionStore = createSessionStore({
+  ...marineFixture,
+  storage: localStorageAdapter,
+})
+
+export function useSessionStore<T>(selector: (state: SessionStore) => T): T {
+  return useStore(sessionStore, selector)
 }
