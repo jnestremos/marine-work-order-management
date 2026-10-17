@@ -35,15 +35,16 @@ function VesselRow({
         }}
         className="sm:max-w-sm"
       />
-      <label className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm">
         <Checkbox
+          id={`vessel-active-${vesselId}`}
           checked={active}
           onCheckedChange={(checked) => {
             updateVessel(vesselId, { active: checked === true })
           }}
         />
-        Active
-      </label>
+        <label htmlFor={`vessel-active-${vesselId}`}>Active</label>
+      </div>
     </li>
   )
 }

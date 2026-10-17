@@ -35,12 +35,14 @@ export function AssignmentPanel() {
                       assignment.memberId === member.id &&
                       assignment.vesselId === vessel.id,
                   )
+                  const inputId = `assignment-${member.id}-${vessel.id}`
                   return (
-                    <label
+                    <div
                       key={vessel.id}
                       className="flex items-center gap-2 text-sm"
                     >
                       <Checkbox
+                        id={inputId}
                         checked={assigned}
                         onCheckedChange={(checked) => {
                           setAssignment(
@@ -50,8 +52,8 @@ export function AssignmentPanel() {
                           )
                         }}
                       />
-                      {vessel.name}
-                    </label>
+                      <label htmlFor={inputId}>{vessel.name}</label>
+                    </div>
                   )
                 })}
               </div>

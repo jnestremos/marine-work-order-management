@@ -79,15 +79,16 @@ function MemberRow({
           </SelectContent>
         </Select>
       </div>
-      <label className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm">
         <Checkbox
+          id={`member-active-${memberId}`}
           checked={active}
           onCheckedChange={(checked) => {
             updateMember(memberId, { active: checked === true })
           }}
         />
-        Active
-      </label>
+        <label htmlFor={`member-active-${memberId}`}>Active</label>
+      </div>
     </li>
   )
 }
