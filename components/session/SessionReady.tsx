@@ -3,7 +3,6 @@
 import { useEffect } from "react"
 import type { ReactNode } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { catalogStore, useCatalogStore } from "@/lib/catalog/store"
 import { sessionStore, useSessionStore } from "@/lib/session/store"
 
 function ControlSkeleton() {
@@ -36,17 +35,13 @@ function SessionSkeleton() {
 }
 
 export function SessionReady({ children }: { children: ReactNode }) {
-  const catalogHydrated = useCatalogStore((state) => state.hasHydrated)
-  const sessionHydrated = useSessionStore((state) => state.hasHydrated)
+  const hasHydrated = useSessionStore((state) => state.hasHydrated)
 
   useEffect(() => {
-    void (async () => {
-      await catalogStore.persist.rehydrate()
-      await sessionStore.persist.rehydrate()
-    })()
+    void sessionStore.persist.rehydrate()
   }, [])
 
-  if (!catalogHydrated || !sessionHydrated) {
+  if (!hasHydrated) {
     return <SessionSkeleton />
   }
 

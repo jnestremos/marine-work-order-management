@@ -1,12 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { withSessionSync } from "@/components/admin/syncCatalog"
+import { useCatalog } from "@/components/admin/catalog-context"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useCatalogStore } from "@/lib/catalog/store"
 
 function VesselRow({
   vesselId,
@@ -17,7 +16,7 @@ function VesselRow({
   name: string
   active: boolean
 }) {
-  const updateVessel = useCatalogStore((state) => state.updateVessel)
+  const { updateVessel } = useCatalog()
   const [draft, setDraft] = useState(name)
 
   return (
@@ -32,9 +31,7 @@ function VesselRow({
             setDraft(name)
             return
           }
-          withSessionSync(() => {
-            updateVessel(vesselId, { name: trimmed })
-          })
+          updateVessel(vesselId, { name: trimmed })
         }}
         className="sm:max-w-sm"
       />
@@ -42,9 +39,7 @@ function VesselRow({
         <Checkbox
           checked={active}
           onCheckedChange={(checked) => {
-            withSessionSync(() => {
-              updateVessel(vesselId, { active: checked === true })
-            })
+            updateVessel(vesselId, { active: checked === true })
           }}
         />
         Active
@@ -54,8 +49,7 @@ function VesselRow({
 }
 
 export function VesselPanel() {
-  const vessels = useCatalogStore((state) => state.vessels)
-  const createVessel = useCatalogStore((state) => state.createVessel)
+  const { vessels, createVessel } = useCatalog()
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
 
@@ -64,7 +58,7 @@ export function VesselPanel() {
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Vessels</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add vessels and toggle whether they appear in the session bar.
+          Add and edit vessels in memory. Changes reset on refresh.
         </p>
       </div>
 
@@ -72,15 +66,13 @@ export function VesselPanel() {
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault()
-          withSessionSync(() => {
-            const id = createVessel(name)
-            if (!id) {
-              setError("Enter a vessel name.")
-              return
-            }
-            setName("")
-            setError(null)
-          })
+          const id = createVessel(name)
+          if (!id) {
+            setError("Enter a vessel name.")
+            return
+          }
+          setName("")
+          setError(null)
         }}
       >
         <div className="flex w-full flex-col gap-1 sm:max-w-sm">
@@ -92,9 +84,7 @@ export function VesselPanel() {
             placeholder="MV Tide"
             aria-invalid={error ? true : undefined}
           />
-          {error ? (
-            <p className="text-sm text-destructive">{error}</p>
-          ) : null}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
         <Button type="submit">Add vessel</Button>
       </form>

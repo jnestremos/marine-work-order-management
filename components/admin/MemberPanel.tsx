@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { withSessionSync } from "@/components/admin/syncCatalog"
+import { useCatalog } from "@/components/admin/catalog-context"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useCatalogStore } from "@/lib/catalog/store"
 import {
   isRole,
   ROLE_LABELS,
@@ -32,7 +31,7 @@ function MemberRow({
   role: Role
   active: boolean
 }) {
-  const updateMember = useCatalogStore((state) => state.updateMember)
+  const { updateMember } = useCatalog()
   const [draft, setDraft] = useState(name)
 
   return (
@@ -47,9 +46,7 @@ function MemberRow({
             setDraft(name)
             return
           }
-          withSessionSync(() => {
-            updateMember(memberId, { name: trimmed })
-          })
+          updateMember(memberId, { name: trimmed })
         }}
         className="sm:max-w-xs"
       />
@@ -64,9 +61,7 @@ function MemberRow({
             if (value === null || !isRole(value)) {
               return
             }
-            withSessionSync(() => {
-              updateMember(memberId, { role: value })
-            })
+            updateMember(memberId, { role: value })
           }}
         >
           <SelectTrigger
@@ -88,9 +83,7 @@ function MemberRow({
         <Checkbox
           checked={active}
           onCheckedChange={(checked) => {
-            withSessionSync(() => {
-              updateMember(memberId, { active: checked === true })
-            })
+            updateMember(memberId, { active: checked === true })
           }}
         />
         Active
@@ -100,8 +93,7 @@ function MemberRow({
 }
 
 export function MemberPanel() {
-  const members = useCatalogStore((state) => state.members)
-  const createMember = useCatalogStore((state) => state.createMember)
+  const { members, createMember } = useCatalog()
   const [name, setName] = useState("")
   const [role, setRole] = useState<Role>("crew")
   const [error, setError] = useState<string | null>(null)
@@ -111,7 +103,7 @@ export function MemberPanel() {
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Members</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add people, set their role, and control who can sign into a vessel.
+          Add people and set roles in memory. Changes reset on refresh.
         </p>
       </div>
 
@@ -119,16 +111,14 @@ export function MemberPanel() {
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault()
-          withSessionSync(() => {
-            const id = createMember(name, role)
-            if (!id) {
-              setError("Enter a member name.")
-              return
-            }
-            setName("")
-            setRole("crew")
-            setError(null)
-          })
+          const id = createMember(name, role)
+          if (!id) {
+            setError("Enter a member name.")
+            return
+          }
+          setName("")
+          setRole("crew")
+          setError(null)
         }}
       >
         <div className="flex w-full flex-col gap-1 sm:max-w-xs">
@@ -140,9 +130,7 @@ export function MemberPanel() {
             placeholder="Lane Quinn"
             aria-invalid={error ? true : undefined}
           />
-          {error ? (
-            <p className="text-sm text-destructive">{error}</p>
-          ) : null}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
         <div className="flex w-full flex-col gap-1 sm:w-40">
           <Label htmlFor="new-member-role">Role</Label>

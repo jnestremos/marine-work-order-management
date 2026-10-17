@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useCatalogStore } from "@/lib/catalog/store"
+import { marineFixture } from "@/lib/fixtures/marine"
 import { useSessionStore } from "@/lib/session/store"
 
 export function SessionSwitch({
@@ -16,8 +16,7 @@ export function SessionSwitch({
   empty: ReactNode
 }) {
   const memberId = useSessionStore((state) => state.memberId)
-  const members = useCatalogStore((state) => state.members)
-  const member = members.find((item) => item.id === memberId)
+  const member = marineFixture.members.find((item) => item.id === memberId)
   if (!member) {
     return empty
   }

@@ -38,8 +38,6 @@ export type SessionStorage = {
 
 export const SESSION_STORAGE_KEY = "marine-session"
 
-export const CATALOG_STORAGE_KEY = "marine-catalog"
-
 export const ROLES = ["admin", "captain", "crew"] as const satisfies readonly Role[]
 
 export const ROLE_LABELS: Record<Role, string> = {
