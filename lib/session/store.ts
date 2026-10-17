@@ -7,6 +7,8 @@ import type {
 } from "@/lib/session/types"
 import { isRole } from "@/lib/session/types"
 
+export type { SessionState }
+
 export type ResolvedSession = {
   session: SessionState
   shouldWrite: boolean
