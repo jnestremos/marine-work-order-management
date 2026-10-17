@@ -140,7 +140,13 @@ function persistStorage(
 ): StateStorage {
   return {
     getItem: (name) => {
-      const { session, shouldWrite } = resolveSession(storage.getItem(name), fixture)
+      let raw: string | null
+      try {
+        raw = storage.getItem(name)
+      } catch {
+        raw = null
+      }
+      const { session, shouldWrite } = resolveSession(raw, fixture)
       const next = sessionEnvelope(session)
       if (shouldWrite) {
         try {
@@ -152,6 +158,13 @@ function persistStorage(
       return next
     },
     setItem: (name, value) => {
+      try {
+        if (storage.getItem(name) === value) {
+          return
+        }
+      } catch {
+        // A failed read still attempts the write.
+      }
       try {
         storage.setItem(name, value)
       } catch {

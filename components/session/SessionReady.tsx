@@ -5,15 +5,26 @@ import type { ReactNode } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { sessionStore, useSessionStore } from "@/lib/session/store"
 
+function ControlSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-1 sm:w-auto">
+      <Skeleton className="h-5 w-16" />
+      <Skeleton className="h-8 w-full sm:w-40 sm:min-w-40" />
+    </div>
+  )
+}
+
 function SessionSkeleton() {
   return (
     <div>
-      <div className="sticky top-0 w-full border-b px-4 py-3">
+      <div className="sticky top-0 z-40 w-full border-b bg-background px-4 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Skeleton className="h-16 w-full sm:h-10 sm:w-40 sm:min-w-40" />
-          <Skeleton className="h-16 w-full sm:h-10 sm:w-40 sm:min-w-40" />
-          <Skeleton className="h-16 w-full sm:h-10 sm:w-40 sm:min-w-40" />
-          <Skeleton className="h-4 w-48 sm:ml-auto" />
+          <ControlSkeleton />
+          <ControlSkeleton />
+          <ControlSkeleton />
+          <div className="sm:ml-auto sm:pb-2">
+            <Skeleton className="h-5 w-48" />
+          </div>
         </div>
       </div>
       <div className="px-4 py-8">

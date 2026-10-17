@@ -24,13 +24,14 @@ export function MemberSelect() {
         <label htmlFor="member-empty" className="text-sm font-medium">
           Member
         </label>
-        <div
+        <button
           id="member-empty"
-          aria-disabled="true"
-          className="flex h-9 w-full items-center rounded-md border bg-muted px-3 text-sm text-muted-foreground sm:w-40 sm:min-w-40"
+          type="button"
+          disabled
+          className="flex h-8 w-full items-center rounded-lg border border-input bg-muted px-2.5 text-left text-sm whitespace-nowrap text-muted-foreground sm:w-auto sm:min-w-40"
         >
           No active members for this role.
-        </div>
+        </button>
       </div>
     )
   }

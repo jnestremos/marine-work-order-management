@@ -92,6 +92,18 @@ describe("resolveSession", () => {
       shouldWrite: true,
     })
   })
+
+  it("keeps a saved Drew Patel session", () => {
+    const session: SessionState = {
+      vesselId: "vessel_aurora",
+      role: "captain",
+      memberId: "member_drew",
+    }
+    expect(resolveSession(envelope(session), marineFixture)).toEqual({
+      session,
+      shouldWrite: false,
+    })
+  })
 })
 
 function memoryStorage(): SessionStorage {
@@ -217,5 +229,38 @@ describe("createSessionStore persistence", () => {
     await session.persist.rehydrate()
     expect(session.getState()).toMatchObject(fallback)
     expect(session.getState().hasHydrated).toBe(true)
+  })
+
+  it("finishes hydration with the default when getItem throws", async () => {
+    const storage = memoryStorage()
+    storage.getItem = () => {
+      throw new Error("denied")
+    }
+    const session = createSessionStore({ ...marineFixture, storage })
+    await session.persist.rehydrate()
+    expect(session.getState().hasHydrated).toBe(true)
+    expect(session.getState()).toMatchObject(fallback)
+  })
+
+  it("keeps a saved Drew Patel session without rewriting storage", async () => {
+    const saved: SessionState = {
+      vesselId: "vessel_aurora",
+      role: "captain",
+      memberId: "member_drew",
+    }
+    const storage = memoryStorage()
+    const raw = envelope(saved)
+    storage.setItem(SESSION_STORAGE_KEY, raw)
+    let writes = 0
+    const write = storage.setItem
+    storage.setItem = (name, value) => {
+      writes += 1
+      write(name, value)
+    }
+    const session = createSessionStore({ ...marineFixture, storage })
+    await session.persist.rehydrate()
+    expect(session.getState()).toMatchObject(saved)
+    expect(writes).toBe(0)
+    expect(storage.getItem(SESSION_STORAGE_KEY)).toBe(raw)
   })
 })
