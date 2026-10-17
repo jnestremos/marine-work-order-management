@@ -172,6 +172,9 @@ describe("createSessionStore actions", () => {
     session.getState().setRole("crew")
     expect(session.getState().memberOptions().map((member) => member.id)).toEqual([
       "member_casey",
+      "member_harper",
+      "member_ivan",
+      "member_kai",
     ])
   })
 
