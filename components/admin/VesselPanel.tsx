@@ -1,56 +1,63 @@
 "use client"
 
 import { useState } from "react"
-import { useCatalog } from "@/components/admin/catalog-context"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import type { Vessel } from "@/lib/session/types"
 
 function VesselRow({
-  vesselId,
-  name,
-  active,
+  vessel,
+  onUpdate,
 }: {
-  vesselId: string
-  name: string
-  active: boolean
+  vessel: Vessel
+  onUpdate: (patch: { name?: string; active?: boolean }) => void
 }) {
-  const { updateVessel } = useCatalog()
-  const [draft, setDraft] = useState(name)
+  const [draft, setDraft] = useState(vessel.name)
 
   return (
     <li className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
       <Input
-        aria-label={`Name for ${name}`}
+        aria-label={`Name for ${vessel.name}`}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
           const trimmed = draft.trim()
-          if (trimmed.length === 0 || trimmed === name) {
-            setDraft(name)
+          if (trimmed.length === 0 || trimmed === vessel.name) {
+            setDraft(vessel.name)
             return
           }
-          updateVessel(vesselId, { name: trimmed })
+          onUpdate({ name: trimmed })
         }}
         className="sm:max-w-sm"
       />
       <div className="flex items-center gap-2 text-sm">
         <Checkbox
-          id={`vessel-active-${vesselId}`}
-          checked={active}
+          id={`vessel-active-${vessel.id}`}
+          checked={vessel.active}
           onCheckedChange={(checked) => {
-            updateVessel(vesselId, { active: checked === true })
+            onUpdate({ active: checked === true })
           }}
         />
-        <label htmlFor={`vessel-active-${vesselId}`}>Active</label>
+        <label htmlFor={`vessel-active-${vessel.id}`}>Active</label>
       </div>
     </li>
   )
 }
 
-export function VesselPanel() {
-  const { vessels, createVessel } = useCatalog()
+export function VesselPanel({
+  vessels,
+  onCreate,
+  onUpdate,
+}: {
+  vessels: Vessel[]
+  onCreate: (name: string) => string | null
+  onUpdate: (
+    vesselId: string,
+    patch: { name?: string; active?: boolean },
+  ) => void
+}) {
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
 
@@ -67,7 +74,7 @@ export function VesselPanel() {
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault()
-          const id = createVessel(name)
+          const id = onCreate(name)
           if (!id) {
             setError("Enter a vessel name.")
             return
@@ -94,9 +101,8 @@ export function VesselPanel() {
         {vessels.map((vessel) => (
           <VesselRow
             key={vessel.id}
-            vesselId={vessel.id}
-            name={vessel.name}
-            active={vessel.active}
+            vessel={vessel}
+            onUpdate={(patch) => onUpdate(vessel.id, patch)}
           />
         ))}
       </ul>

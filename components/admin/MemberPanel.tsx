@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useCatalog } from "@/components/admin/catalog-context"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -17,55 +16,51 @@ import {
   isRole,
   ROLE_LABELS,
   ROLES,
+  type Member,
   type Role,
 } from "@/lib/session/types"
 
 function MemberRow({
-  memberId,
-  name,
-  role,
-  active,
+  member,
+  onUpdate,
 }: {
-  memberId: string
-  name: string
-  role: Role
-  active: boolean
+  member: Member
+  onUpdate: (patch: { name?: string; role?: Role; active?: boolean }) => void
 }) {
-  const { updateMember } = useCatalog()
-  const [draft, setDraft] = useState(name)
+  const [draft, setDraft] = useState(member.name)
 
   return (
     <li className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
       <Input
-        aria-label={`Name for ${name}`}
+        aria-label={`Name for ${member.name}`}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
           const trimmed = draft.trim()
-          if (trimmed.length === 0 || trimmed === name) {
-            setDraft(name)
+          if (trimmed.length === 0 || trimmed === member.name) {
+            setDraft(member.name)
             return
           }
-          updateMember(memberId, { name: trimmed })
+          onUpdate({ name: trimmed })
         }}
         className="sm:max-w-xs"
       />
       <div className="flex w-full flex-col gap-1 sm:w-40">
-        <Label htmlFor={`member-role-${memberId}`} className="sr-only">
-          Role for {name}
+        <Label htmlFor={`member-role-${member.id}`} className="sr-only">
+          Role for {member.name}
         </Label>
         <Select
           items={ROLE_LABELS}
-          value={role}
+          value={member.role}
           onValueChange={(value) => {
             if (value === null || !isRole(value)) {
               return
             }
-            updateMember(memberId, { role: value })
+            onUpdate({ role: value })
           }}
         >
           <SelectTrigger
-            id={`member-role-${memberId}`}
+            id={`member-role-${member.id}`}
             className="w-full sm:w-40"
           >
             <SelectValue />
@@ -81,20 +76,30 @@ function MemberRow({
       </div>
       <div className="flex items-center gap-2 text-sm">
         <Checkbox
-          id={`member-active-${memberId}`}
-          checked={active}
+          id={`member-active-${member.id}`}
+          checked={member.active}
           onCheckedChange={(checked) => {
-            updateMember(memberId, { active: checked === true })
+            onUpdate({ active: checked === true })
           }}
         />
-        <label htmlFor={`member-active-${memberId}`}>Active</label>
+        <label htmlFor={`member-active-${member.id}`}>Active</label>
       </div>
     </li>
   )
 }
 
-export function MemberPanel() {
-  const { members, createMember } = useCatalog()
+export function MemberPanel({
+  members,
+  onCreate,
+  onUpdate,
+}: {
+  members: Member[]
+  onCreate: (name: string, role: Role) => string | null
+  onUpdate: (
+    memberId: string,
+    patch: { name?: string; role?: Role; active?: boolean },
+  ) => void
+}) {
   const [name, setName] = useState("")
   const [role, setRole] = useState<Role>("crew")
   const [error, setError] = useState<string | null>(null)
@@ -112,7 +117,7 @@ export function MemberPanel() {
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault()
-          const id = createMember(name, role)
+          const id = onCreate(name, role)
           if (!id) {
             setError("Enter a member name.")
             return
@@ -163,10 +168,8 @@ export function MemberPanel() {
         {members.map((member) => (
           <MemberRow
             key={member.id}
-            memberId={member.id}
-            name={member.name}
-            role={member.role}
-            active={member.active}
+            member={member}
+            onUpdate={(patch) => onUpdate(member.id, patch)}
           />
         ))}
       </ul>

@@ -1,10 +1,19 @@
 "use client"
 
-import { useCatalog } from "@/components/admin/catalog-context"
 import { Checkbox } from "@/components/ui/checkbox"
+import type { Assignment, Member, Vessel } from "@/lib/session/types"
 
-export function AssignmentPanel() {
-  const { members, vessels, assignments, setAssignment } = useCatalog()
+export function AssignmentPanel({
+  members,
+  vessels,
+  assignments,
+  onToggle,
+}: {
+  members: Member[]
+  vessels: Vessel[]
+  assignments: Assignment[]
+  onToggle: (memberId: string, vesselId: string, assigned: boolean) => void
+}) {
   const activeMembers = members.filter((member) => member.active)
   const activeVessels = vessels.filter((vessel) => vessel.active)
 
@@ -45,11 +54,7 @@ export function AssignmentPanel() {
                         id={inputId}
                         checked={assigned}
                         onCheckedChange={(checked) => {
-                          setAssignment(
-                            member.id,
-                            vessel.id,
-                            checked === true,
-                          )
+                          onToggle(member.id, vessel.id, checked === true)
                         }}
                       />
                       <label htmlFor={inputId}>{vessel.name}</label>
