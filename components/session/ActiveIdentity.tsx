@@ -1,7 +1,7 @@
 "use client"
 
 import { marineFixture } from "@/lib/fixtures/marine"
-import { ROLE_LABELS } from "@/lib/session/types"
+import { memberName, ROLE_LABELS } from "@/lib/session/types"
 import { useSessionStore } from "@/lib/session/store"
 
 export function ActiveIdentity() {
@@ -12,7 +12,7 @@ export function ActiveIdentity() {
   const member = marineFixture.members.find((item) => item.id === memberId)
   const roleLabel = ROLE_LABELS[role]
   const text = member
-    ? `${member.name} · ${roleLabel} · ${vessel?.name}`
+    ? `${memberName(member)} · ${roleLabel} · ${vessel?.name}`
     : `${roleLabel} · ${vessel?.name} · No member selected`
 
   return <p className="text-sm text-muted-foreground">{text}</p>

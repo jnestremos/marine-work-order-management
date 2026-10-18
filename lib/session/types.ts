@@ -8,9 +8,14 @@ export type Vessel = {
 
 export type Member = {
   id: string
-  name: string
+  firstName: string
+  lastName: string
   role: Role
   active: boolean
+}
+
+export function memberName(member: { firstName: string; lastName: string }) {
+  return `${member.firstName.trim()} ${member.lastName.trim()}`.replace(/\s+/g, " ").trim()
 }
 
 export type Assignment = {

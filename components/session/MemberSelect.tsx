@@ -9,13 +9,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSessionStore } from "@/lib/session/store"
+import { memberName } from "@/lib/session/types"
 
 export function MemberSelect() {
   const memberId = useSessionStore((state) => state.memberId)
   const setMemberId = useSessionStore((state) => state.setMemberId)
   const members = useSessionStore(useShallow((state) => state.memberOptions()))
   const memberItems = Object.fromEntries(
-    members.map((member) => [member.id, member.name]),
+    members.map((member) => [member.id, memberName(member)]),
   )
 
   if (members.length === 0 || memberId === null) {
@@ -56,7 +57,7 @@ export function MemberSelect() {
         <SelectContent>
           {members.map((member) => (
             <SelectItem key={member.id} value={member.id}>
-              {member.name}
+              {memberName(member)}
             </SelectItem>
           ))}
         </SelectContent>

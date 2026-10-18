@@ -1,7 +1,19 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useState } from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Controller, useForm } from "react-hook-form"
+import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -10,8 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { assignmentFormSchema, fieldError } from "@/lib/admin/schema"
-import type { Assignment, Member, Vessel } from "@/lib/session/types"
+import { assignmentFormSchema, type AssignmentFormValues } from "@/lib/admin/schema"
+import { memberName, type Assignment, type Member, type Vessel } from "@/lib/session/types"
+
+const emptyAssignmentForm: AssignmentFormValues = { memberId: "", vesselId: "" }
 
 export function AssignmentsSection({
   members,
@@ -26,133 +40,230 @@ export function AssignmentsSection({
   onAdd: (input: { memberId: string; vesselId: string }) => string | null
   onRemove: (memberId: string, vesselId: string) => string | null
 }) {
-  const [memberId, setMemberId] = useState("")
-  const [vesselId, setVesselId] = useState("")
-  const [personError, setPersonError] = useState<string | null>(null)
-  const [vesselError, setVesselError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const memberItems = Object.fromEntries(members.map((member) => [member.id, member.name]))
+  const [open, setOpen] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [query, setQuery] = useState("")
+  const normalizedQuery = query.trim().toLowerCase()
+  const visibleAssignments = normalizedQuery
+    ? assignments.filter((assignment) => {
+        const member = members.find((item) => item.id === assignment.memberId)
+        if (!member) {
+          return false
+        }
+        return (
+          member.firstName.toLowerCase().includes(normalizedQuery) ||
+          member.lastName.toLowerCase().includes(normalizedQuery)
+        )
+      })
+    : assignments
+  const memberItems = Object.fromEntries(
+    members.map((member) => [member.id, memberName(member)]),
+  )
   const vesselItems = Object.fromEntries(vessels.map((vessel) => [vessel.id, vessel.name]))
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    clearErrors,
+    formState: { errors },
+  } = useForm<AssignmentFormValues>({
+    resolver: zodResolver(assignmentFormSchema),
+    defaultValues: emptyAssignmentForm,
+  })
 
-  function resetForm() {
-    setMemberId("")
-    setVesselId("")
-    setPersonError(null)
-    setVesselError(null)
-    setFormError(null)
+  function closeModal() {
+    setOpen(false)
+    reset(emptyAssignmentForm)
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const parsed = assignmentFormSchema.safeParse({ memberId, vesselId })
-    if (!parsed.success) {
-      setPersonError(fieldError(parsed.error, "memberId"))
-      setVesselError(fieldError(parsed.error, "vesselId"))
-      setFormError(null)
-      return
-    }
-    setPersonError(null)
-    setVesselError(null)
-    const message = onAdd(parsed.data)
+  function openAdd() {
+    reset(emptyAssignmentForm)
+    setOpen(true)
+  }
+
+  function onValid(values: AssignmentFormValues) {
+    const message = onAdd(values)
     if (message) {
-      setFormError(message)
+      setError("root", { message })
       return
     }
-    resetForm()
+    closeModal()
   }
 
   return (
-    <section>
-      <h2 className="text-lg font-semibold">Assignments</h2>
-      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="flex w-full flex-col gap-1 sm:max-w-sm">
-            <Label htmlFor="assignment-person">Person</Label>
-            <Select
-              items={memberItems}
-              value={memberId === "" ? null : memberId}
-              onValueChange={(value) => {
-                if (value !== null) {
-                  setMemberId(value)
-                }
-              }}
-            >
-              <SelectTrigger id="assignment-person" className="w-full">
-                <SelectValue placeholder="Select a person" />
-              </SelectTrigger>
-              <SelectContent>
-                {members.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {personError ? (
-              <p className="text-sm text-destructive">{personError}</p>
-            ) : null}
-          </div>
-          <div className="flex w-full flex-col gap-1 sm:max-w-sm">
-            <Label htmlFor="assignment-vessel">Vessel</Label>
-            <Select
-              items={vesselItems}
-              value={vesselId === "" ? null : vesselId}
-              onValueChange={(value) => {
-                if (value !== null) {
-                  setVesselId(value)
-                }
-              }}
-            >
-              <SelectTrigger id="assignment-vessel" className="w-full">
-                <SelectValue placeholder="Select a vessel" />
-              </SelectTrigger>
-              <SelectContent>
-                {vessels.map((vessel) => (
-                  <SelectItem key={vessel.id} value={vessel.id}>
-                    {vessel.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {vesselError ? (
-              <p className="text-sm text-destructive">{vesselError}</p>
-            ) : null}
-          </div>
-        </div>
-        {formError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {formError}
-          </p>
-        ) : null}
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
         <div>
-          <Button type="submit">Add assignment</Button>
+          <h2 className="text-base font-semibold">Assignments</h2>
+          <p className="text-sm text-muted-foreground">
+            {assignments.length}{" "}
+            {assignments.length === 1 ? "assignment" : "assignments"}
+          </p>
         </div>
-      </form>
-      <ul className="mt-4 divide-y">
-        {assignments.map((assignment) => {
-          const member = members.find((item) => item.id === assignment.memberId)
-          const vessel = vessels.find((item) => item.id === assignment.vesselId)
-          return (
-            <li
-              key={`${assignment.memberId}:${assignment.vesselId}`}
-              className="flex flex-wrap items-center gap-2 py-2 text-sm"
-            >
-              <span className="font-medium">{member?.name}</span>
-              <span>{vessel?.name}</span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setFormError(onRemove(assignment.memberId, assignment.vesselId))
-                }
-              >
-                Remove
+        <div className="flex items-center gap-2">
+          <Label htmlFor="assignment-search" className="sr-only">
+            Search
+          </Label>
+          <Input
+            id="assignment-search"
+            value={query}
+            placeholder="Search first or last name"
+            className="w-56"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <Button type="button" onClick={openAdd}>
+            Add assignment
+          </Button>
+        </div>
+      </div>
+      {actionError ? (
+        <p role="alert" className="border-b px-4 py-3 text-sm text-destructive">
+          {actionError}
+        </p>
+      ) : null}
+      <DataTable
+        minWidth="min-w-[40rem]"
+        empty={normalizedQuery ? "No matching assignments." : "No assignments yet."}
+        rows={visibleAssignments}
+        getRowKey={(assignment) => `${assignment.memberId}:${assignment.vesselId}`}
+        columns={[
+          {
+            header: "User",
+            cellClassName: "font-medium",
+            value: (assignment) => {
+              const member = members.find((item) => item.id === assignment.memberId)
+              return member ? memberName(member) : ""
+            },
+            cell: (assignment) => {
+              const member = members.find((item) => item.id === assignment.memberId)
+              return member ? memberName(member) : ""
+            },
+          },
+          {
+            header: "Vessel",
+            width: "w-48",
+            value: (assignment) =>
+              vessels.find((vessel) => vessel.id === assignment.vesselId)?.name ?? "",
+            cell: (assignment) =>
+              vessels.find((vessel) => vessel.id === assignment.vesselId)?.name,
+          },
+          {
+            header: "Actions",
+            width: "w-64",
+            align: "center",
+            cell: (assignment) => (
+              <DataTableActions
+                actions={[
+                  {
+                    label: "Remove",
+                    onClick: () =>
+                      setActionError(onRemove(assignment.memberId, assignment.vesselId)),
+                  },
+                ]}
+              />
+            ),
+          },
+        ]}
+      />
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) {
+            closeModal()
+            return
+          }
+          setOpen(true)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add assignment</DialogTitle>
+            <DialogDescription>Choose a user and a vessel.</DialogDescription>
+          </DialogHeader>
+          <form
+            id="assignment-form"
+            onSubmit={handleSubmit(onValid, () => clearErrors("root"))}
+            className="flex flex-col gap-3"
+          >
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="assignment-user">User</Label>
+              <Controller
+                name="memberId"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    items={memberItems}
+                    value={field.value ? field.value : null}
+                    onValueChange={(value) => {
+                      if (value !== null) {
+                        field.onChange(value)
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="assignment-user" className="w-full">
+                      <SelectValue placeholder="Select a user" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {members.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {memberName(member)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.memberId ? (
+                <p className="text-sm text-destructive">{errors.memberId.message}</p>
+              ) : null}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="assignment-vessel">Vessel</Label>
+              <Controller
+                name="vesselId"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    items={vesselItems}
+                    value={field.value ? field.value : null}
+                    onValueChange={(value) => {
+                      if (value !== null) {
+                        field.onChange(value)
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="assignment-vessel" className="w-full">
+                      <SelectValue placeholder="Select a vessel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vessels.map((vessel) => (
+                        <SelectItem key={vessel.id} value={vessel.id}>
+                          {vessel.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.vesselId ? (
+                <p className="text-sm text-destructive">{errors.vesselId.message}</p>
+              ) : null}
+            </div>
+            {errors.root?.message ? (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.root.message}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>
+                Cancel
               </Button>
-            </li>
-          )
-        })}
-      </ul>
+              <Button type="submit">Add assignment</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

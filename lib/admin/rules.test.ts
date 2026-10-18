@@ -4,7 +4,7 @@ import {
   duplicateName,
   lastAdminBlock,
 } from "@/lib/admin/rules"
-import type { MarineFixture } from "@/lib/session/types"
+import { memberName, type MarineFixture } from "@/lib/session/types"
 
 const sample: MarineFixture = {
   vessels: [
@@ -13,10 +13,10 @@ const sample: MarineFixture = {
     { id: "vessel_retired", name: "MV Retired", active: false },
   ],
   members: [
-    { id: "member_avery", name: "Avery Chen", role: "admin", active: true },
-    { id: "member_frank", name: "Frank Adler", role: "admin", active: true },
-    { id: "member_blake", name: "Blake Ortiz", role: "captain", active: true },
-    { id: "member_eden", name: "Eden Brooks", role: "crew", active: false },
+    { id: "member_avery", firstName: "Avery", lastName: "Chen", role: "admin", active: true },
+    { id: "member_frank", firstName: "Frank", lastName: "Adler", role: "admin", active: true },
+    { id: "member_blake", firstName: "Blake", lastName: "Ortiz", role: "captain", active: true },
+    { id: "member_eden", firstName: "Eden", lastName: "Brooks", role: "crew", active: false },
   ],
   assignments: [
     { memberId: "member_avery", vesselId: "vessel_horizon" },
@@ -37,17 +37,21 @@ function withoutFrank(directory: MarineFixture): MarineFixture {
   }
 }
 
+function userNames(members: MarineFixture["members"]) {
+  return members.map((member) => ({ id: member.id, name: memberName(member) }))
+}
+
 describe("duplicateName", () => {
   it("matches a name ignoring case", () => {
-    expect(duplicateName(sample.members, "avery chen")).toBe(true)
+    expect(duplicateName(userNames(sample.members), "avery chen")).toBe(true)
   })
 
   it("matches an inactive record", () => {
-    expect(duplicateName(sample.members, "eden brooks")).toBe(true)
+    expect(duplicateName(userNames(sample.members), "eden brooks")).toBe(true)
   })
 
   it("allows a record to keep its own name", () => {
-    expect(duplicateName(sample.members, "Avery Chen", "member_avery")).toBe(false)
+    expect(duplicateName(userNames(sample.members), "Avery Chen", "member_avery")).toBe(false)
   })
 
   it("matches a vessel name ignoring case, including inactive vessels", () => {
@@ -56,7 +60,7 @@ describe("duplicateName", () => {
 })
 
 describe("duplicateAssignment", () => {
-  it("rejects a person already assigned to that vessel", () => {
+  it("rejects a user already assigned to that vessel", () => {
     expect(
       duplicateAssignment(sample.assignments, "member_avery", "vessel_horizon"),
     ).toBe(true)

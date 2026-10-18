@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import { AssignmentsSection } from "@/components/admin/AssignmentsSection"
-import { PeopleSection } from "@/components/admin/PeopleSection"
+import { UsersSection } from "@/components/admin/UsersSection"
 import { VesselsSection } from "@/components/admin/VesselsSection"
 import { duplicateAssignment, duplicateName, lastAdminBlock } from "@/lib/admin/rules"
 import { marineFixture } from "@/lib/fixtures/marine"
-import type { MarineFixture, Role } from "@/lib/session/types"
+import { memberName, type MarineFixture, type Role } from "@/lib/session/types"
 
 function copyFixture(fixture: MarineFixture): MarineFixture {
   return {
@@ -19,9 +19,18 @@ function copyFixture(fixture: MarineFixture): MarineFixture {
 export function AdminPanels() {
   const [directory, setDirectory] = useState(() => copyFixture(marineFixture))
 
-  function savePerson(input: { id?: string; name: string; role: Role }) {
-    if (duplicateName(directory.members, input.name, input.id)) {
-      return "A person with this name already exists"
+  function saveUser(input: {
+    id?: string
+    firstName: string
+    lastName: string
+    role: Role
+  }) {
+    const users = directory.members.map((member) => ({
+      id: member.id,
+      name: memberName(member),
+    }))
+    if (duplicateName(users, memberName(input), input.id)) {
+      return "A user with this name already exists"
     }
     if (input.id) {
       const existing = directory.members.find((member) => member.id === input.id)
@@ -42,7 +51,12 @@ export function AdminPanels() {
         ...directory,
         members: directory.members.map((member) =>
           member.id === input.id
-            ? { ...member, name: input.name, role: input.role }
+            ? {
+                ...member,
+                firstName: input.firstName,
+                lastName: input.lastName,
+                role: input.role,
+              }
             : member,
         ),
       })
@@ -54,7 +68,8 @@ export function AdminPanels() {
         ...directory.members,
         {
           id: crypto.randomUUID(),
-          name: input.name,
+          firstName: input.firstName,
+          lastName: input.lastName,
           role: input.role,
           active: true,
         },
@@ -124,7 +139,7 @@ export function AdminPanels() {
 
   function addAssignment(input: { memberId: string; vesselId: string }) {
     if (duplicateAssignment(directory.assignments, input.memberId, input.vesselId)) {
-      return "This person is already assigned to this vessel"
+      return "This user is already assigned to this vessel"
     }
     setDirectory({
       ...directory,
@@ -156,10 +171,10 @@ export function AdminPanels() {
   }
 
   return (
-    <div className="mt-8 flex flex-col gap-10">
-      <PeopleSection
+    <div className="flex flex-col gap-6">
+      <UsersSection
         members={directory.members}
-        onSave={savePerson}
+        onSave={saveUser}
         onSetActive={setMemberActive}
       />
       <VesselsSection
