@@ -29,6 +29,7 @@ export const marineFixture: MarineFixture = {
     { memberId: "member_frank", vesselId: "vessel_horizon" },
     { memberId: "member_frank", vesselId: "vessel_aurora" },
     { memberId: "member_gina", vesselId: "vessel_horizon" },
+    { memberId: "member_gina", vesselId: "vessel_aurora" },
     { memberId: "member_harper", vesselId: "vessel_horizon" },
     { memberId: "member_ivan", vesselId: "vessel_horizon" },
     { memberId: "member_june", vesselId: "vessel_aurora" },

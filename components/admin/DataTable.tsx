@@ -4,6 +4,7 @@ import { useId, useState, type ReactNode } from "react"
 import { ListFilterIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -77,6 +78,7 @@ function ColumnMenu({
   onSort: (direction: "asc" | "desc" | null) => void
 }) {
   const filterId = useId()
+  const sortName = useId()
   const sorted = sort?.header === header ? sort.direction : null
   const active = sorted !== null || filter.trim().length > 0
 
@@ -92,37 +94,30 @@ function ColumnMenu({
         <ListFilterIcon className="size-3.5" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56">
-        <div className="flex flex-col gap-1">
-          <Button
-            type="button"
-            variant={sorted === "asc" ? "secondary" : "ghost"}
-            size="sm"
-            className="justify-start"
-            onClick={() => onSort("asc")}
-          >
+        <RadioGroup
+          name={sortName}
+          value={sorted ?? "none"}
+          onValueChange={(value) => {
+            if (value === "asc" || value === "desc") {
+              onSort(value)
+              return
+            }
+            onSort(null)
+          }}
+        >
+          <label className="flex items-center gap-2">
+            <RadioGroupItem value="none" />
+            None
+          </label>
+          <label className="flex items-center gap-2">
+            <RadioGroupItem value="asc" />
             Sort ascending
-          </Button>
-          <Button
-            type="button"
-            variant={sorted === "desc" ? "secondary" : "ghost"}
-            size="sm"
-            className="justify-start"
-            onClick={() => onSort("desc")}
-          >
+          </label>
+          <label className="flex items-center gap-2">
+            <RadioGroupItem value="desc" />
             Sort descending
-          </Button>
-          {sorted ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="justify-start"
-              onClick={() => onSort(null)}
-            >
-              Clear sort
-            </Button>
-          ) : null}
-        </div>
+          </label>
+        </RadioGroup>
         <div className="flex flex-col gap-1 border-t pt-2">
           <Label htmlFor={filterId}>Filter {header}</Label>
           <Input
