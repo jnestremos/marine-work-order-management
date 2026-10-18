@@ -82,12 +82,17 @@ export function buildWorkOrder(
   }
 }
 
+function workOrderCodeNumber(code: string): number {
+  const match = /^WO-(\d+)$/.exec(code)
+  return match ? Number(match[1]) : 0
+}
+
 export function workOrdersForCaptain(
   orders: WorkOrder[],
   vesselId: string,
   captainId: string,
 ): WorkOrder[] {
-  return orders.filter(
-    (order) => order.vesselId === vesselId && order.createdById === captainId,
-  )
+  return orders
+    .filter((order) => order.vesselId === vesselId && order.createdById === captainId)
+    .sort((a, b) => workOrderCodeNumber(b.code) - workOrderCodeNumber(a.code))
 }

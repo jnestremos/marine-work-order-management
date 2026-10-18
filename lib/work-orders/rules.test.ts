@@ -154,7 +154,7 @@ describe("buildWorkOrder", () => {
 })
 
 describe("workOrdersForCaptain", () => {
-  const horizonBlake: WorkOrder = {
+  const horizonBlakeOlder: WorkOrder = {
     id: "wo_1",
     code: "WO-1001",
     vesselId: "vessel_horizon",
@@ -165,24 +165,31 @@ describe("workOrdersForCaptain", () => {
     assigneeId: "member_casey",
     createdById: "member_blake",
   }
-  const horizonGina: WorkOrder = {
-    ...horizonBlake,
-    id: "wo_2",
+  const horizonBlakeNewer: WorkOrder = {
+    ...horizonBlakeOlder,
+    id: "wo_1b",
     code: "WO-1002",
+    title: "Radio check",
+  }
+  const horizonGina: WorkOrder = {
+    ...horizonBlakeOlder,
+    id: "wo_2",
+    code: "WO-1003",
     createdById: "member_gina",
   }
   const auroraDrew: WorkOrder = {
-    ...horizonBlake,
+    ...horizonBlakeOlder,
     id: "wo_3",
-    code: "WO-1003",
+    code: "WO-1004",
     vesselId: "vessel_aurora",
     createdById: "member_drew",
   }
 
-  it("returns only that captain's orders on that vessel, oldest code first", () => {
-    const orders = [horizonBlake, horizonGina, auroraDrew]
+  it("returns only that captain's orders on that vessel, latest code first", () => {
+    const orders = [horizonBlakeOlder, horizonBlakeNewer, horizonGina, auroraDrew]
     expect(workOrdersForCaptain(orders, "vessel_horizon", "member_blake")).toEqual([
-      horizonBlake,
+      horizonBlakeNewer,
+      horizonBlakeOlder,
     ])
     expect(workOrdersForCaptain(orders, "vessel_horizon", "member_gina")).toEqual([
       horizonGina,
