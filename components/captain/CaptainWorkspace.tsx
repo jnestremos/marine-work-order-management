@@ -77,7 +77,7 @@ export function CaptainWorkspace() {
         ))}
       </div>
       <VesselOrders
-        key={selected.id}
+        key={`${memberId ?? ""}:${selected.id}`}
         vesselId={selected.id}
         vesselName={selected.name}
         captainId={memberId ?? ""}

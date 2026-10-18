@@ -33,10 +33,10 @@ export function eligibleCrew(directory: MarineFixture, vesselId: string): Member
 }
 
 export function nextWorkOrderCode(orders: WorkOrder[]): string {
-  const highest = orders.reduce((max, order) => {
-    const match = /^WO-(\d+)$/.exec(order.code)
-    return match ? Math.max(max, Number(match[1])) : max
-  }, 1000)
+  const highest = orders.reduce(
+    (max, order) => Math.max(max, workOrderCodeNumber(order.code)),
+    1000,
+  )
   return `WO-${highest + 1}`
 }
 

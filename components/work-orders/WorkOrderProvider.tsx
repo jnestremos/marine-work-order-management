@@ -14,8 +14,7 @@ const WorkOrderContext = createContext<WorkOrderStore | null>(null)
 
 export function WorkOrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<WorkOrder[]>([])
-  const ordersRef = useRef(orders)
-  ordersRef.current = orders
+  const ordersRef = useRef<WorkOrder[]>([])
 
   function addWorkOrder(input: WorkOrderDraft) {
     const current = ordersRef.current
