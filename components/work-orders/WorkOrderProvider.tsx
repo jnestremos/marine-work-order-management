@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useRef, useState, type ReactNode } from "react"
 import { marineFixture } from "@/lib/fixtures/marine"
 import { buildWorkOrder, type WorkOrderDraft } from "@/lib/work-orders/rules"
 import type { WorkOrder } from "@/lib/work-orders/types"
@@ -14,21 +14,22 @@ const WorkOrderContext = createContext<WorkOrderStore | null>(null)
 
 export function WorkOrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<WorkOrder[]>([])
+  const ordersRef = useRef(orders)
+  ordersRef.current = orders
 
   function addWorkOrder(input: WorkOrderDraft) {
-    let error: string | null = null
-    setOrders((current) => {
-      const result = buildWorkOrder(marineFixture, current, {
-        ...input,
-        id: crypto.randomUUID(),
-      })
-      if (!result.ok) {
-        error = result.error
-        return current
-      }
-      return [...current, result.order]
+    const current = ordersRef.current
+    const result = buildWorkOrder(marineFixture, current, {
+      ...input,
+      id: crypto.randomUUID(),
     })
-    return error
+    if (!result.ok) {
+      return result.error
+    }
+    const next = [...current, result.order]
+    ordersRef.current = next
+    setOrders(next)
+    return null
   }
 
   return <WorkOrderContext value={{ orders, addWorkOrder }}>{children}</WorkOrderContext>
