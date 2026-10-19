@@ -24,7 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { SolutionHistoryDialog } from "@/components/work-orders/SolutionHistory"
+import {
+  SolutionHistory,
+  SolutionHistoryDialog,
+} from "@/components/work-orders/SolutionHistory"
 import { workOrderFormSchema, type WorkOrderFormValues } from "@/lib/work-orders/schema"
 import { WORK_ORDER_STATUS_LABELS, type WorkOrder } from "@/lib/work-orders/types"
 
@@ -47,6 +50,9 @@ export function WorkOrderDialog({
   crewLocked = false,
   submitLabel,
   onSubmit,
+  onAttest,
+  onReject,
+  reviewError,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -60,10 +66,14 @@ export function WorkOrderDialog({
   crewLocked?: boolean
   submitLabel?: string
   onSubmit?: (values: WorkOrderFormValues) => Promise<string | null> | string | null
+  onAttest?: () => void
+  onReject?: () => void
+  reviewError?: string | null
 }) {
   const [historyOpen, setHistoryOpen] = useState(false)
   const crewItems = Object.fromEntries(crew.map((member) => [member.id, member.name]))
   const editable = !readOnly && Boolean(submitLabel)
+  const canReview = order?.status === "done" && Boolean(onAttest || onReject)
   const {
     register,
     control,
@@ -183,25 +193,36 @@ export function WorkOrderDialog({
         </div>
       ) : null}
       {showSolution && order ? (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="work-order-solution">Solution</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              aria-label="Solution history"
-              onClick={() => setHistoryOpen(true)}
-            >
-              <HistoryIcon />
-            </Button>
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="work-order-solution">Latest solution</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Solution history"
+                onClick={() => setHistoryOpen(true)}
+              >
+                <HistoryIcon />
+              </Button>
+            </div>
+            <Textarea id="work-order-solution" value={solution || "No solution yet."} disabled />
           </div>
-          <Textarea id="work-order-solution" value={solution} disabled />
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-sm font-medium">Solution history</span>
+            <SolutionHistory solutions={order.solutions} />
+          </div>
         </div>
       ) : null}
       {errors.root?.message ? (
         <p role="alert" className="text-sm text-destructive">
           {errors.root.message}
+        </p>
+      ) : null}
+      {reviewError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {reviewError}
         </p>
       ) : null}
     </>
@@ -216,7 +237,7 @@ export function WorkOrderDialog({
         }
       }}
     >
-      <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{order ? "View work order" : "Add work order"}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -225,7 +246,7 @@ export function WorkOrderDialog({
           <form
             id="work-order-form"
             onSubmit={handleSubmit(onValid, onInvalid)}
-            className="flex flex-col gap-3"
+            className="flex min-w-0 flex-col gap-3"
           >
             {fields}
             <DialogFooter>
@@ -233,15 +254,35 @@ export function WorkOrderDialog({
                 Cancel
               </Button>
               <Button type="submit">{submitLabel}</Button>
+              {canReview && onReject ? (
+                <Button type="button" variant="destructive" onClick={onReject}>
+                  Reject
+                </Button>
+              ) : null}
+              {canReview && onAttest ? (
+                <Button type="button" variant="success" onClick={onAttest}>
+                  Attest
+                </Button>
+              ) : null}
             </DialogFooter>
           </form>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-3">
             {fields}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={close}>
                 Close
               </Button>
+              {canReview && onReject ? (
+                <Button type="button" variant="destructive" onClick={onReject}>
+                  Reject
+                </Button>
+              ) : null}
+              {canReview && onAttest ? (
+                <Button type="button" variant="success" onClick={onAttest}>
+                  Attest
+                </Button>
+              ) : null}
             </DialogFooter>
           </div>
         )}

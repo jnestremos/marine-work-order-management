@@ -225,6 +225,27 @@ describe("assignment: browser Supabase client", () => {
     expect(dataTable).toMatch(/Avoid fixed `w-\*`/)
   })
 
+  it("keeps solution history tables wide enough to render inside work orders", () => {
+    const history = readFileSync(
+      path.join(root, "components/work-orders/SolutionHistory.tsx"),
+      "utf8",
+    )
+    const dialog = readFileSync(
+      path.join(root, "components/work-orders/WorkOrderDialog.tsx"),
+      "utf8",
+    )
+    const captain = readFileSync(
+      path.join(root, "components/captain/CaptainWorkspace.tsx"),
+      "utf8",
+    )
+    expect(history).toMatch(/min-w-\[40rem\]/)
+    expect(history).not.toMatch(/minWidth=\"w-full min-w-0\"/)
+    expect(dialog).toMatch(/Solution history/)
+    expect(dialog).toMatch(/onAttest/)
+    expect(captain).toMatch(/onAttest=/)
+    expect(captain).toMatch(/showSolution=\{Boolean\(editing\)\}/)
+  })
+
   it("fetches marine resources on demand with TanStack Query", () => {
     const queries = readFileSync(
       path.join(root, "components/data/marine-queries.ts"),

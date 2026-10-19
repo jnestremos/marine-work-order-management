@@ -26,22 +26,24 @@ export function SolutionHistory({ solutions }: { solutions: WorkOrderSolution[] 
   const rows = [...solutions].reverse()
 
   return (
-    <div className="h-48 max-h-48 min-h-0 w-full max-w-full overflow-y-auto rounded-lg border">
+    <div className="h-48 max-h-48 min-h-0 min-w-0 max-w-full overflow-auto rounded-lg border">
       <DataTable
-        minWidth="w-full min-w-0"
-        containerClassName="min-w-0 max-w-full overflow-x-auto"
+        minWidth="min-w-[40rem]"
+        containerClassName="min-w-0 max-w-full"
         empty="No solutions yet."
         rows={rows}
         getRowKey={(solution) => solution.id}
         columns={[
           {
             header: "Solution",
+            width: "min-w-48",
             wrap: true,
             value: (solution) => solution.text,
             cell: (solution) => solution.text,
           },
           {
             header: "Rejection reason",
+            width: "min-w-40",
             wrap: true,
             value: (solution) => solution.reviewNote ?? "",
             cell: (solution) => solution.reviewNote ?? "—",

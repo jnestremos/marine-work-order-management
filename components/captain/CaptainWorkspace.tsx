@@ -112,11 +112,13 @@ function VesselOrders({
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectNote, setRejectNote] = useState("")
   const [rejectError, setRejectError] = useState<string | null>(null)
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const vesselOrders = orders.filter((order) => order.vesselId === vesselId)
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
-    ? orders.filter((order) => order.title.toLowerCase().includes(normalizedQuery))
-    : orders
-  const rejecting = orders.find((order) => order.id === rejectId) ?? null
+    ? vesselOrders.filter((order) => order.title.toLowerCase().includes(normalizedQuery))
+    : vesselOrders
+  const rejecting = vesselOrders.find((order) => order.id === rejectId) ?? null
 
   function closeModal() {
     setOpen(false)
@@ -142,8 +144,19 @@ function VesselOrders({
 
   function openEdit(order: WorkOrder) {
     setEditingId(order.id)
+    setReviewError(null)
     setFormKey((value) => value + 1)
     setOpen(true)
+  }
+
+  async function attestOrder(orderId: string) {
+    setReviewError(null)
+    const message = await onReview(orderId, "accepted")
+    if (message) {
+      setReviewError(message)
+      return
+    }
+    closeModal()
   }
 
   async function submitWorkOrder(values: WorkOrderFormValues) {
@@ -167,7 +180,8 @@ function VesselOrders({
         <div>
           <h2 className="text-base font-semibold">{vesselName}</h2>
           <p className="text-sm text-muted-foreground">
-            {orders.length} {orders.length === 1 ? "work order" : "work orders"}
+            {vesselOrders.length}{" "}
+            {vesselOrders.length === 1 ? "work order" : "work orders"}
           </p>
         </div>
         <Button
@@ -275,17 +289,37 @@ function VesselOrders({
         order={editing}
         description={
           crewLocked
-            ? "Update the title and issue. The assigned crew member stays as it is."
+            ? "Review the solution, then Attest or Reject. You can still update the title and issue."
             : editing
               ? "Update the title, issue, and crew member."
               : "Enter a title, an issue, and a crew member."
         }
         showCrew
-        showSolution={crewLocked}
+        showStatus={Boolean(editing)}
+        showSolution={Boolean(editing)}
         crew={crew}
         crewLocked={crewLocked}
         submitLabel={editing ? "Save work order" : "Add work order"}
         onSubmit={submitWorkOrder}
+        onAttest={
+          editing?.status === "done"
+            ? () => {
+                void attestOrder(editing.id)
+              }
+            : undefined
+        }
+        onReject={
+          editing?.status === "done"
+            ? () => {
+                setRejectId(editing.id)
+                setRejectNote("")
+                setRejectError(null)
+                setReviewError(null)
+                closeModal()
+              }
+            : undefined
+        }
+        reviewError={reviewError}
         onOpenChange={(next) => {
           if (!next) {
             closeModal()

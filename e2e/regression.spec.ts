@@ -149,10 +149,18 @@ test.describe("work order business process", () => {
     await dialog.getByRole("button", { name: "Cancel" }).click()
     await expect(dialog).toBeHidden()
 
-    await captainRow.getByRole("button", { name: "Attest" }).click()
-    await expect(captainRow.getByRole("button", { name: "Attest" })).toHaveCount(0, {
-      timeout: 20_000,
-    })
+    await captainRow.getByRole("button", { name: "View" }).click()
+    const viewDialog = page.getByRole("dialog").filter({ hasText: "View work order" })
+    await expect(viewDialog).toBeVisible()
+    await expect(viewDialog.getByText("Solution history")).toBeVisible()
+    await expect(viewDialog.getByRole("columnheader", { name: /Solution/i }).first()).toBeVisible()
+    await expect(viewDialog.getByRole("button", { name: "Attest", exact: true })).toBeVisible()
+    await expect(viewDialog.getByRole("button", { name: "Reject", exact: true })).toBeVisible()
+    await viewDialog.getByRole("button", { name: "Attest", exact: true }).click()
+    await expect(viewDialog).toBeHidden({ timeout: 20_000 })
+    await expect(
+      page.locator("tr", { hasText: title }).getByRole("button", { name: "Attest", exact: true }),
+    ).toHaveCount(0, { timeout: 20_000 })
   })
 })
 
