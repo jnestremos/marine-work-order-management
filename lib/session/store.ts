@@ -6,7 +6,7 @@ import {
   type StateStorage,
 } from "zustand/middleware"
 import { marineFixture } from "@/lib/fixtures/marine"
-import { localStorageAdapter } from "@/lib/session/storage"
+import { cookieStorageAdapter } from "@/lib/session/storage"
 import type {
   MarineFixture,
   Member,
@@ -336,7 +336,7 @@ export function createSessionStore(
 
 export const sessionStore = createSessionStore({
   ...marineFixture,
-  storage: localStorageAdapter,
+  storage: cookieStorageAdapter,
 })
 
 export function useSessionStore<T>(selector: (state: SessionStore) => T): T {
