@@ -264,7 +264,7 @@ as $$
     array(
       select wo.code
       from public.work_orders wo
-      where wo.status in ('open', 'in_progress')
+      where wo.status in ('open', 'in_progress', 'done')
         and (
           (p_member_id is not null and (wo.assignee_id = p_member_id or wo.created_by_id = p_member_id))
           or (p_vessel_id is not null and wo.vessel_id = p_vessel_id)
@@ -274,6 +274,9 @@ as $$
     '{}'
   );
 $$;
+
+comment on function private.unresolved_codes(uuid, uuid) is
+  'Work-order codes that block member/vessel deactivation: open, in_progress, or done (awaiting Attest/Reject).';
 
 create function private.next_work_order_code()
 returns text
@@ -390,7 +393,7 @@ begin
     end if;
     codes := private.unresolved_codes(new.id, null);
     if cardinality(codes) > 0 then
-      raise exception 'Resolve % before deactivating %', private.listed(codes), who;
+      raise exception 'Close or approve % before deactivating %', private.listed(codes), who;
     end if;
   end if;
 
@@ -423,7 +426,7 @@ begin
   if tg_op = 'UPDATE' and old.active and not new.active then
     codes := private.unresolved_codes(null, new.id);
     if cardinality(codes) > 0 then
-      raise exception 'Resolve % before deactivating %', private.listed(codes), new.name;
+      raise exception 'Close or approve % before deactivating %', private.listed(codes), new.name;
     end if;
   end if;
 
@@ -538,13 +541,16 @@ as $$
       select wo.code
       from public.work_orders wo
       where wo.vessel_id = p_vessel_id
-        and wo.status in ('open', 'in_progress')
+        and wo.status in ('open', 'in_progress', 'done')
         and (wo.assignee_id = p_member_id or wo.created_by_id = p_member_id)
       order by substring(wo.code from '^WO-([0-9]+)$')::bigint
     ),
     '{}'
   );
 $$;
+
+comment on function private.unresolved_codes_for_assignment(uuid, uuid) is
+  'Work-order codes that block unassign: open, in_progress, or done (awaiting captain Attest/Reject) for that member on the vessel.';
 
 create function private.assignments_before_delete()
 returns trigger
@@ -557,7 +563,7 @@ declare
 begin
   codes := private.unresolved_codes_for_assignment(old.member_id, old.vessel_id);
   if cardinality(codes) > 0 then
-    raise exception 'Resolve % before removing this assignment', private.listed(codes);
+    raise exception 'Close or approve % before removing this assignment', private.listed(codes);
   end if;
   return old;
 end;

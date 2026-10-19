@@ -35,11 +35,13 @@ Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind
 
 ## Features
 
-1. **Mock authentication** — sticky top bar with Vessel → Role → Member dropdowns. Selecting a member switches the session (cookie) and scopes UI + RLS headers (`x-marine-member-id`, `x-marine-role`, `x-marine-vessel-id`).
-2. **Admin dashboard** — users, vessels, and vessel assignments with validation; duplicate names and unsafe deactivations are blocked in Postgres.
-3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason.
-4. **Browser Supabase client** — `lib/supabase/client.ts` + `lib/supabase/api.ts` load and mutate data; domain rules live in migrations under `supabase/migrations/`.
-5. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys. The session bar uses a lightweight `session_choices` RPC. Loading states use skeleton placeholders in the main content area.
+1. **Mock authentication** — sticky top bar with Vessel → Role → Member dropdowns. Selecting a member switches the session (cookie) and scopes UI + RLS headers (`x-marine-member-id`, `x-marine-role`, `x-marine-vessel-id`). Role options are vessel-scoped (only roles that have selectable members for that vessel).
+2. **Admin dashboard** — users, vessels, and vessel assignments with validation; duplicate names and unsafe deactivations are blocked in Postgres. Tables use horizontal scroll and column `min-width`s so headers stay readable on mobile.
+3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason. The captain work-order dialog shows the latest solution, an inline **solution history** table, and Attest/Reject when status is `Done`.
+4. **Assignments ↔ service records** — assigning someone opens a service-record appointment; removing them (or setting a service-record end date) closes it and drops the assignment. Calendar date fields enforce real days and end ≥ start (UI `min`/`max` + Zod + Postgres checks).
+5. **Unassign / deactivate guards** — a captain or crew member cannot leave a vessel, and cannot be deactivated, while they still have `open`, `in_progress`, or `done` (awaiting Attest/Reject) work orders. Vessel deactivation uses the same pending-work check. Closing a service record with an end date uses the unassign rule.
+6. **Browser Supabase client** — `lib/supabase/client.ts` + `lib/supabase/api.ts` load and mutate data; domain rules live in migrations under `supabase/migrations/`.
+7. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys (including service records after assign/unassign). The session bar uses a lightweight `session_choices` RPC. Loading states use skeleton placeholders in the main content area.
 
 ## Specification checks
 
@@ -183,16 +185,16 @@ erDiagram
 ## Database security
 
 - **RLS** on all public tables; access uses the mock session headers via `private.set_marine_session` (`pgrst.db_pre_request`).
-- **Triggers** enforce duplicates, assignment eligibility, service-record open/close with unassign on end date, deactivation guards, work-order codes (`WO-1001+`), and solution review.
+- **Triggers** enforce duplicates, assignment eligibility, service-record open/close (including unassign when an end date is set), deactivation guards, work-order codes (`WO-1001+`), solution review, and **blocked unassign / deactivate** while related work orders are still `open`, `in_progress`, or `done`.
 - The browser uses the **publishable** key only; never ship the secret key as `NEXT_PUBLIC_*`.
 
 ## Roles
 
 | Role | Focus |
 | --- | --- |
-| Admin | Users, vessels, assignments, sea service history |
-| Captain | Create work orders, **Attest** or **Reject** (with reason) when `Done`, view crew |
-| Crew | Assigned work orders, solutions, own records |
+| Admin | Users, vessels, assignments, sea service history; cannot remove or deactivate captain/crew until their outstanding or pending-approval work orders are cleared |
+| Captain | Create work orders, **Attest** or **Reject** (with reason) when `Done`, view crew and solution history; cannot be unassigned or deactivated while vessel work they created still needs work or approval |
+| Crew | Assigned work orders, solutions, own records; cannot be unassigned or deactivated while their assigned orders are still open, in progress, or awaiting approval |
 
 ## Assumptions and decisions
 
@@ -212,8 +214,8 @@ The brief forbids email auth and asks for three dependent dropdowns that instant
 
 The stack prefers a **browser Supabase client**. We still put domain rules in the database (triggers + RLS) rather than in React:
 
-- Duplicate names, unsafe deactivations, assignment eligibility, work-order codes, and solution review must hold even if the UI is bypassed.
-- The client validates forms for UX; Postgres remains the source of truth and returns clear errors the UI surfaces.
+- Duplicate names, unsafe deactivations, assignment eligibility, unassign-with-pending-approval, service-record open/close, work-order codes, and solution review must hold even if the UI is bypassed.
+- The client validates forms for UX (including calendar date order); Postgres remains the source of truth and returns clear errors the UI surfaces.
 
 **Assumption:** “browser client” means reads/writes go through `supabase-js` from the browser, not that authorization logic should be client-only.
 
@@ -260,7 +262,18 @@ Submitting a solution moves the order toward review (`done` / `in_progress` per 
 
 ### Extra domain tables
 
-Beyond the core work-order flow we kept **service records** (appointment history opened/closed by assignment) and **sea services** (voyage history with admin review). They support the marine directory the UI already had and reuse the same session/RLS patterns. They are not required to exercise the work-order lifecycle alone.
+Beyond the core work-order flow we kept **service records** (appointment history opened/closed by assignment; ending a record unassigns the member when allowed) and **sea services** (voyage history with admin review). They support the marine directory the UI already had and reuse the same session/RLS patterns. They are not required to exercise the work-order lifecycle alone.
+
+### Unassign, deactivate, and pending approval
+
+Removing a captain or crew assignment (or signing them off via a service-record end date), deactivating that user, or deactivating a vessel is blocked while related work orders are still in:
+
+| Status | Why it blocks |
+| --- | --- |
+| `open` / `in_progress` | Work is still outstanding |
+| `done` | Solution awaits captain **Attest** / **Reject** |
+
+Member checks match the person as **creator** (typical for captains) or **assignee** (typical for crew). Vessel checks use any outstanding order on that vessel. Accepted/rejected orders do not block.
 
 ### Seed data
 
