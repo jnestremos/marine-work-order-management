@@ -50,7 +50,14 @@ export function ConfirmDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" variant={shown.confirmVariant} onClick={onConfirm}>
+          <Button
+            type="button"
+            variant={shown.confirmVariant}
+            onClick={() => {
+              onConfirm()
+              onOpenChange(false)
+            }}
+          >
             {shown.confirmLabel}
           </Button>
         </DialogFooter>

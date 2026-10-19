@@ -7,6 +7,7 @@ async function confirmDialog(page: Page, title: string, confirmLabel: string) {
   })
   await expect(dialog).toBeVisible()
   await dialog.getByRole("button", { name: confirmLabel, exact: true }).click()
+  await expect(dialog).toBeHidden()
 }
 
 test.describe("role navigation regression", () => {
@@ -116,15 +117,17 @@ test.describe("work order business process", () => {
     await page.goto("/captain/work-orders")
     await page.getByRole("button", { name: "Add work order" }).click()
 
-    let dialog = page.getByRole("dialog")
-    await expect(dialog).toBeVisible()
-    await dialog.getByLabel("Title").fill(title)
-    await dialog.getByLabel("Issue").fill("Automated regression lifecycle flow.")
-    await dialog.locator("#work-order-crew").click()
+    const addDialog = page.getByRole("dialog").filter({
+      has: page.getByRole("heading", { name: "Add work order", exact: true }),
+    })
+    await expect(addDialog).toBeVisible()
+    await addDialog.getByLabel("Title").fill(title)
+    await addDialog.getByLabel("Issue").fill("Automated regression lifecycle flow.")
+    await addDialog.locator("#work-order-crew").click()
     await page.getByRole("option", { name: "Casey Nguyen", exact: true }).click()
-    await dialog.getByRole("button", { name: "Add work order" }).click()
+    await addDialog.getByRole("button", { name: "Add work order" }).click()
     await confirmDialog(page, "Add work order?", "Add work order")
-    await expect(dialog).toBeHidden()
+    await expect(addDialog).toBeHidden({ timeout: 20_000 })
     await expect(page.getByText(title)).toBeVisible()
 
     await setSession(page, {
@@ -136,14 +139,17 @@ test.describe("work order business process", () => {
     const crewRow = page.locator("tr", { hasText: title })
     await expect(crewRow).toBeVisible()
     await crewRow.getByRole("button", { name: "Resolve" }).click()
-    dialog = page.getByRole("dialog")
-    await expect(dialog.getByRole("heading", { name: /Send solution/i })).toBeVisible()
-    await dialog.getByRole("textbox", { name: "Solution" }).fill(
+    const solutionDialog = page.getByRole("dialog").filter({
+      has: page.getByRole("heading", { name: /Send solution for/i }),
+    })
+    await expect(solutionDialog).toBeVisible()
+    await solutionDialog.getByRole("textbox", { name: "Solution" }).fill(
       "Completed the lifecycle check during regression.",
     )
-    await dialog.getByRole("button", { name: "Send solution" }).click()
+    await solutionDialog.getByRole("button", { name: "Send solution" }).click()
     await confirmDialog(page, "Send solution?", "Send solution")
-    await expect(dialog).toBeHidden({ timeout: 20_000 })
+    await expect(solutionDialog).toBeHidden({ timeout: 20_000 })
+    await expect(crewRow.getByText("Done")).toBeVisible({ timeout: 20_000 })
 
     await setSession(page, {
       vessel: "MV Horizon",
@@ -155,12 +161,14 @@ test.describe("work order business process", () => {
     await expect(captainRow).toBeVisible()
     await expect(captainRow.getByRole("button", { name: "Close", exact: true })).toHaveCount(0)
     await captainRow.getByRole("button", { name: "Reject" }).click()
-    dialog = page.getByRole("dialog")
-    await expect(dialog.getByRole("heading", { name: "Reject work order" })).toBeVisible()
-    await dialog.getByRole("button", { name: "Reject" }).click()
-    await expect(dialog.getByRole("alert")).toContainText(/rejection reason/i)
-    await dialog.getByRole("button", { name: "Cancel" }).click()
-    await expect(dialog).toBeHidden()
+    const rejectDialog = page.getByRole("dialog").filter({
+      has: page.getByRole("heading", { name: "Reject work order", exact: true }),
+    })
+    await expect(rejectDialog).toBeVisible()
+    await rejectDialog.getByRole("button", { name: "Reject" }).click()
+    await expect(rejectDialog.getByRole("alert")).toContainText(/rejection reason/i)
+    await rejectDialog.getByRole("button", { name: "Cancel" }).click()
+    await expect(rejectDialog).toBeHidden()
 
     await captainRow.getByRole("button", { name: "View" }).click()
     const viewDialog = page.getByRole("dialog").filter({ hasText: "View work order" })
