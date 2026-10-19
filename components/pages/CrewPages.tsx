@@ -43,7 +43,7 @@ export function CrewWorkOrdersPage() {
   const [draft, setDraft] = useState("")
   const [error, setError] = useState<string | null>(null)
   const mine = (ordersQuery.data ?? [])
-    .filter((order) => order.assigneeId === memberId)
+    .filter((order) => order.assigneeId === memberId && order.status !== "closed")
     .sort((left, right) => right.code.localeCompare(left.code, undefined, { numeric: true }))
   const selected = mine.find((order) => order.id === selectedId) ?? null
   const viewing = mine.find((order) => order.id === viewId) ?? null
@@ -144,7 +144,9 @@ export function CrewWorkOrdersPage() {
                     inline
                     actions={[
                       { label: "View", onClick: () => openView(order) },
-                      ...(order.solutions.at(-1) && order.solutions.at(-1)?.status !== "rejected"
+                      ...(order.status === "closed" ||
+                      order.status === "accepted" ||
+                      (order.solutions.at(-1) && order.solutions.at(-1)?.status !== "rejected")
                         ? []
                         : [{ label: "Resolve", onClick: () => openSolutions(order) }]),
                     ]}

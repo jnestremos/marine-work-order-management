@@ -1,4 +1,10 @@
-export type WorkOrderStatus = "open" | "in_progress" | "done" | "accepted" | "rejected"
+export type WorkOrderStatus =
+  | "open"
+  | "in_progress"
+  | "done"
+  | "accepted"
+  | "rejected"
+  | "closed"
 
 export type SolutionStatus = "pending" | "accepted" | "rejected"
 
@@ -34,6 +40,7 @@ export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
   done: "Done",
   accepted: "Accepted",
   rejected: "Rejected",
+  closed: "Closed",
 }
 
 export function workOrderIsUnresolved(status: WorkOrderStatus) {

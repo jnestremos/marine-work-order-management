@@ -15,7 +15,8 @@ create type public.work_order_status as enum (
   'in_progress',
   'done',
   'accepted',
-  'rejected'
+  'rejected',
+  'closed'
 );
 
 create type public.review_status as enum ('pending', 'accepted', 'rejected');
@@ -694,6 +695,12 @@ begin
     perform set_config('private.in_sync', 'off', true);
   end if;
 
+  if new.status is distinct from old.status and new.status = 'closed' then
+    if old.status not in ('accepted', 'rejected') then
+      raise exception 'Close a work order only after it is accepted or rejected';
+    end if;
+  end if;
+
   return new;
 end;
 $$;
@@ -706,6 +713,7 @@ set search_path = ''
 as $$
 declare
   assignee_id uuid;
+  order_status public.work_order_status;
   latest_status public.review_status;
 begin
   new.body := btrim(new.body);
@@ -713,13 +721,17 @@ begin
     raise exception 'Solution is required';
   end if;
 
-  select wo.assignee_id
-    into assignee_id
+  select wo.assignee_id, wo.status
+    into assignee_id, order_status
   from public.work_orders wo
   where wo.id = new.work_order_id;
 
   if new.posted_by is distinct from assignee_id then
     raise exception 'You can only send a solution for a work order assigned to you';
+  end if;
+
+  if order_status in ('accepted', 'closed') then
+    raise exception 'This work order is closed';
   end if;
 
   select s.status

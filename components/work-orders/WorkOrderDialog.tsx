@@ -52,6 +52,7 @@ export function WorkOrderDialog({
   onSubmit,
   onAttest,
   onReject,
+  onCloseWorkOrder,
   reviewError,
 }: {
   open: boolean
@@ -68,12 +69,15 @@ export function WorkOrderDialog({
   onSubmit?: (values: WorkOrderFormValues) => Promise<string | null> | string | null
   onAttest?: () => void
   onReject?: () => void
+  onCloseWorkOrder?: () => void
   reviewError?: string | null
 }) {
   const [historyOpen, setHistoryOpen] = useState(false)
   const crewItems = Object.fromEntries(crew.map((member) => [member.id, member.name]))
   const editable = !readOnly && Boolean(submitLabel)
   const canReview = order?.status === "done" && Boolean(onAttest || onReject)
+  const canCloseWorkOrder =
+    (order?.status === "accepted" || order?.status === "rejected") && Boolean(onCloseWorkOrder)
   const {
     register,
     control,
@@ -264,6 +268,11 @@ export function WorkOrderDialog({
                   Attest
                 </Button>
               ) : null}
+              {canCloseWorkOrder ? (
+                <Button type="button" onClick={onCloseWorkOrder}>
+                  Close work order
+                </Button>
+              ) : null}
             </DialogFooter>
           </form>
         ) : (
@@ -271,7 +280,7 @@ export function WorkOrderDialog({
             {fields}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={close}>
-                Close
+                {canCloseWorkOrder ? "Dismiss" : "Close"}
               </Button>
               {canReview && onReject ? (
                 <Button type="button" variant="destructive" onClick={onReject}>
@@ -281,6 +290,11 @@ export function WorkOrderDialog({
               {canReview && onAttest ? (
                 <Button type="button" variant="success" onClick={onAttest}>
                   Attest
+                </Button>
+              ) : null}
+              {canCloseWorkOrder ? (
+                <Button type="button" onClick={onCloseWorkOrder}>
+                  Close work order
                 </Button>
               ) : null}
             </DialogFooter>

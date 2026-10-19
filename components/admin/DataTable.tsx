@@ -60,6 +60,7 @@ const actionIcons: Record<string, LucideIcon> = {
   Accept: CircleCheckIcon,
   Attest: CircleCheckIcon,
   Reject: CircleXIcon,
+  Close: CircleCheckIcon,
   Remove: Trash2Icon,
 }
 
@@ -149,6 +150,7 @@ const CHOICE_ORDER = [
   "Pending",
   "Accepted",
   "Rejected",
+  "Closed",
 ]
 
 function columnText<Row>(column: DataTableColumn<Row>, row: Row) {

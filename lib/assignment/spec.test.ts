@@ -124,6 +124,12 @@ describe("assignment: work order lifecycle", () => {
     ])
   })
 
+  it("includes Accepted, Rejected, and Closed review outcomes", () => {
+    expect(WORK_ORDER_STATUS_LABELS.accepted).toBe("Accepted")
+    expect(WORK_ORDER_STATUS_LABELS.rejected).toBe("Rejected")
+    expect(WORK_ORDER_STATUS_LABELS.closed).toBe("Closed")
+  })
+
   it("requires title, issue, and crew assignee on create", () => {
     expect(
       workOrderFormSchema.safeParse({ title: "", issue: "leak", assigneeId: "m-casey" }).success,

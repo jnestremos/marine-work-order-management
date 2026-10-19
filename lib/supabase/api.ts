@@ -381,7 +381,7 @@ export async function updateWorkOrder(
 
 export async function reviewWorkOrder(
   id: string,
-  status: "accepted" | "rejected",
+  status: "accepted" | "rejected" | "closed",
   note?: string,
 ): Promise<string | null> {
   if (status === "rejected") {

@@ -93,7 +93,7 @@ function VesselOrders({
   ) => Promise<string | null>
   onReview: (
     id: string,
-    status: "accepted" | "rejected",
+    status: "accepted" | "rejected" | "closed",
     note?: string,
   ) => Promise<string | null>
 }) {
@@ -152,6 +152,16 @@ function VesselOrders({
   async function attestOrder(orderId: string) {
     setReviewError(null)
     const message = await onReview(orderId, "accepted")
+    if (message) {
+      setReviewError(message)
+      return
+    }
+    closeModal()
+  }
+
+  async function closeWorkOrder(orderId: string) {
+    setReviewError(null)
+    const message = await onReview(orderId, "closed")
     if (message) {
       setReviewError(message)
       return
@@ -252,7 +262,7 @@ function VesselOrders({
           },
           {
             header: "Actions",
-            width: "min-w-80",
+            width: "min-w-96",
             align: "center",
             cell: (order) => {
               const actions: DataTableAction[] = [
@@ -278,6 +288,14 @@ function VesselOrders({
                   },
                 )
               }
+              if (order.status === "accepted" || order.status === "rejected") {
+                actions.push({
+                  label: "Close",
+                  onClick: () => {
+                    void onReview(order.id, "closed")
+                  },
+                })
+              }
               return <DataTableActions inline actions={actions} />
             },
           },
@@ -290,9 +308,11 @@ function VesselOrders({
         description={
           crewLocked
             ? "Review the solution, then Attest or Reject. You can still update the title and issue."
-            : editing
-              ? "Update the title, issue, and crew member."
-              : "Enter a title, an issue, and a crew member."
+            : editing?.status === "accepted" || editing?.status === "rejected"
+              ? "Close the work order when it is fully finished. Closed orders no longer block crew changes."
+              : editing
+                ? "Update the title, issue, and crew member."
+                : "Enter a title, an issue, and a crew member."
         }
         showCrew
         showStatus={Boolean(editing)}
@@ -316,6 +336,13 @@ function VesselOrders({
                 setRejectError(null)
                 setReviewError(null)
                 closeModal()
+              }
+            : undefined
+        }
+        onCloseWorkOrder={
+          editing?.status === "accepted" || editing?.status === "rejected"
+            ? () => {
+                void closeWorkOrder(editing.id)
               }
             : undefined
         }

@@ -92,8 +92,11 @@ export function useMarineMutations() {
       id: string,
       input: { title: string; issue: string; assigneeId: string },
     ) => run(() => api.updateWorkOrder(id, input), [marineKeys.workOrders(session)]),
-    reviewWorkOrder: (id: string, status: "accepted" | "rejected", note?: string) =>
-      run(() => api.reviewWorkOrder(id, status, note), [marineKeys.workOrders(session)]),
+    reviewWorkOrder: (
+      id: string,
+      status: "accepted" | "rejected" | "closed",
+      note?: string,
+    ) => run(() => api.reviewWorkOrder(id, status, note), [marineKeys.workOrders(session)]),
     submitSolution: (orderId: string, memberId: string, text: string) =>
       run(() => api.submitSolution(orderId, memberId, text), [
         marineKeys.workOrders(session),

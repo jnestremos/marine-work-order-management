@@ -20,6 +20,7 @@ const badgeVariants = cva(
         done: "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
         accepted: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
         rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+        closed: "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200",
         pending: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
         active: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
         inactive: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",

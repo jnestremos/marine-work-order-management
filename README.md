@@ -37,9 +37,9 @@ Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind
 
 1. **Mock authentication** — sticky top bar with Vessel → Role → Member dropdowns. Selecting a member switches the session (cookie) and scopes UI + RLS headers (`x-marine-member-id`, `x-marine-role`, `x-marine-vessel-id`). Role options are vessel-scoped (only roles that have selectable members for that vessel).
 2. **Admin dashboard** — users, vessels, and vessel assignments with validation; duplicate names and unsafe deactivations are blocked in Postgres. Data tables fill the card on wide layouts (`w-full`) and use column `min-width`s plus horizontal scroll so headers stay readable on mobile.
-3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason. The captain work-order dialog shows the latest solution, an inline **solution history** table, and Attest/Reject when status is `Done`.
+3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason, then **Close work order** to mark it `Closed`. The captain dialog shows the latest solution, an inline **solution history** table, Attest/Reject when `Done`, and Close when `Accepted` or `Rejected`.
 4. **Assignments ↔ service records** — assigning someone opens a service-record appointment; removing them (or setting a service-record end date) closes it and drops the assignment. Calendar date fields enforce real days and end ≥ start (UI `min`/`max` + Zod + Postgres checks).
-5. **Unassign / deactivate guards** — a captain or crew member cannot leave a vessel, and cannot be deactivated, while they still have `open`, `in_progress`, `done` (awaiting Attest/Reject), or `rejected` (needs another solution) work orders. Vessel deactivation uses the same pending-work check. Closing a service record with an end date uses the unassign rule.
+5. **Unassign / deactivate guards** — a captain or crew member cannot leave a vessel, and cannot be deactivated, while they still have `open`, `in_progress`, `done` (awaiting Attest/Reject), or `rejected` work orders. Marking a rejected (or accepted) order **Closed** clears that block. Vessel deactivation uses the same pending-work check. Closing a service record with an end date uses the unassign rule.
 6. **Browser Supabase client** — `lib/supabase/client.ts` + `lib/supabase/api.ts` load and mutate data; domain rules live in migrations under `supabase/migrations/`.
 7. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys (including service records after assign/unassign). The session bar uses a lightweight `session_choices` RPC. Loading states use skeleton placeholders in the main content area.
 
@@ -228,12 +228,13 @@ The brief says statuses must be `Open`, `In Progress`, and `Done`, then also ask
 | `open` | Created by captain, assigned to crew |
 | `in_progress` | Crew has engaged (solution path in flight) |
 | `done` | Latest solution awaiting captain review |
-| `accepted` | Captain attested — record fully closed |
-| `rejected` | Captain rejected — crew may submit another solution; still blocks unassign/deactivate until the order is accepted |
+| `accepted` | Captain attested — ready to close |
+| `rejected` | Captain rejected — crew may submit another solution; still blocks unassign/deactivate until closed or accepted |
+| `closed` | Captain finalized the order after accept or reject; no longer blocks unassign/deactivate |
 
-Crew-facing labels still emphasize Open / In Progress / Done. Attest maps to `accepted` in the UI.
+Crew-facing labels still emphasize Open / In Progress / Done. Attest maps to `accepted`; **Close work order** maps to `closed`.
 
-**Assumption:** Attest/Reject are review outcomes beyond the three operational statuses, not a replacement for them.
+**Assumption:** Attest/Reject are review outcomes beyond the three operational statuses; `closed` is the terminal archive state after review.
 
 ### Solution as history, not a single field
 
@@ -272,9 +273,9 @@ Removing a captain or crew assignment (or signing them off via a service-record 
 | --- | --- |
 | `open` / `in_progress` | Work is still outstanding |
 | `done` | Solution awaits captain **Attest** / **Reject** |
-| `rejected` | Crew must send another solution before the order can be closed |
+| `rejected` | Needs another solution, or the captain must **Close work order** |
 
-Member checks match the person as **creator** (typical for captains) or **assignee** (typical for crew). Vessel checks use any outstanding order on that vessel. Only **accepted** orders no longer block removal or deactivation.
+Member checks match the person as **creator** (typical for captains) or **assignee** (typical for crew). Vessel checks use any outstanding order on that vessel. **Accepted** and **closed** orders do not block removal or deactivation; closing a **rejected** order clears that block without requiring another solution.
 
 ### Seed data
 
