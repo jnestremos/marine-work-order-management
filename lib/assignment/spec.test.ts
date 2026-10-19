@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import { assignmentFormSchema, userFormSchema, vesselFormSchema } from "@/lib/admin/schema"
 import { ROLE_HOME, ROLE_NAV } from "@/lib/navigation"
 import { redirectFor } from "@/lib/session/redirect"
-import { activeVessels, membersFor } from "@/lib/session/store"
+import { activeVessels, membersFor, rolesFor } from "@/lib/session/store"
 import { ROLES, type MarineFixture } from "@/lib/session/types"
 import { workOrderFormSchema } from "@/lib/work-orders/schema"
 import { rejectionReasonBlock } from "@/lib/work-orders/review"
@@ -59,6 +59,11 @@ describe("assignment: mock authentication session", () => {
       "m-harper",
     ])
     expect(membersFor(directory, "v-aurora", "crew")).toEqual([])
+  })
+
+  it("limits role options to roles with members for the selected vessel", () => {
+    expect(rolesFor(directory, "v-horizon")).toEqual(["admin", "captain", "crew"])
+    expect(rolesFor(directory, "v-aurora")).toEqual(["admin", "captain"])
   })
 
   it("lets admins appear for every vessel without an assignment", () => {

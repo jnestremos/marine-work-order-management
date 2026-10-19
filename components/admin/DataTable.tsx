@@ -94,7 +94,7 @@ export function DataTableActions({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-center gap-2",
+        "flex flex-nowrap items-center justify-center gap-2",
         fit && "flex-col",
       )}
     >
@@ -408,7 +408,7 @@ export function DataTable<Row>({
                       : index === 0
                         ? "whitespace-nowrap"
                         : column.align === "center"
-                          ? "text-center"
+                          ? "whitespace-nowrap text-center"
                           : "truncate",
                     column.cellClassName,
                   )}

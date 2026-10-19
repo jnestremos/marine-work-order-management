@@ -334,7 +334,7 @@ export function SeaServiceSection({
           },
           {
             header: "Actions",
-            width: "w-64",
+            width: "w-72",
             align: "center",
             cell: (record) => {
               const name = vesselName(vessels, record.vesselId) || "this vessel"

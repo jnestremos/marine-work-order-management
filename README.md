@@ -16,7 +16,7 @@ Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind
 | Data fetching | TanStack Query — on-demand per resource, keyed by session |
 | Backend access | `@supabase/supabase-js` in the browser + Postgres RLS / triggers |
 | Request gating | `proxy.ts` redirects by role/path |
-| Tests | Vitest |
+| Tests | Vitest (unit/spec) + Playwright (e2e / accessibility); no BrowserStack |
 
 ### Server vs client components
 
@@ -49,6 +49,19 @@ Automated checks for the technical assessment live in [`lib/assignment/spec.test
 pnpm test
 ```
 
+## End-to-end and accessibility
+
+Playwright covers role navigation, work-order business flows, and axe accessibility checks (`wcag2a` / `wcag2aa` / `wcag21aa`, failing on serious/critical).
+
+```bash
+pnpm exec playwright install chromium   # once per machine
+pnpm test:e2e                           # full Playwright suite
+pnpm test:regression                    # role/process + a11y regression
+pnpm test:a11y                          # accessibility only
+```
+
+Requires a running app with seed data (local `pnpm dev` is started automatically unless `PLAYWRIGHT_BASE_URL` is set) and the same Supabase `NEXT_PUBLIC_*` env as the app.
+
 ## Getting started
 
 ```bash
@@ -75,8 +88,10 @@ Pushes to `main` that touch `supabase/**` also run [`.github/workflows/supabase.
 ## Scripts
 
 ```bash
-pnpm test    # Vitest (includes assignment specification checks)
-pnpm build   # production build
+pnpm test              # Vitest (includes assignment specification checks)
+pnpm test:e2e          # Playwright e2e
+pnpm test:regression   # Playwright role/process + accessibility regression
+pnpm build             # production build
 pnpm lint
 ```
 

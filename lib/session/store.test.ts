@@ -193,6 +193,15 @@ describe("createSessionStore actions", () => {
     })
   })
 
+  it("omits roles with no members for the selected vessel", () => {
+    const session = store()
+    expect(session.getState().roleOptions()).toEqual(["admin", "captain", "crew"])
+    session.getState().setVesselId("vessel_aurora")
+    expect(session.getState().roleOptions()).toEqual(["admin", "captain"])
+    session.getState().setRole("crew")
+    expect(session.getState().role).toBe("admin")
+  })
+
   it("keeps the admin when the vessel changes", () => {
     const session = store()
     session.getState().setMemberId("member_frank")
@@ -214,11 +223,15 @@ describe("createSessionStore actions", () => {
     expect(session.getState().memberId).toBe("member_blake")
   })
 
-  it("clears the member when the role has nobody", () => {
+  it("ignores selecting a role that is unavailable for the vessel", () => {
     const session = store()
     session.getState().setVesselId("vessel_aurora")
     session.getState().setRole("crew")
-    expect(session.getState().memberId).toBeNull()
+    expect(session.getState()).toMatchObject({
+      vesselId: "vessel_aurora",
+      role: "admin",
+      memberId: "member_avery",
+    })
   })
 
   it("hides inactive vessels and inactive members", () => {

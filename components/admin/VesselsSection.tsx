@@ -206,7 +206,7 @@ export function VesselsSection({
           },
           {
             header: "Actions",
-            width: "w-64",
+            width: "w-72",
             align: "center",
             cell: (vessel) => (
               <DataTableActions

@@ -178,7 +178,7 @@ export function AssignmentsSection({
           },
           {
             header: "Actions",
-            width: "w-64",
+            width: "w-40",
             align: "center",
             cell: (assignment) => (
               <DataTableActions

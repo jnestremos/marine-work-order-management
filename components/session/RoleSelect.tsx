@@ -1,5 +1,6 @@
 "use client"
 
+import { useShallow } from "zustand/react/shallow"
 import {
   Select,
   SelectContent,
@@ -7,12 +8,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ROLE_LABELS, ROLES } from "@/lib/session/types"
+import { ROLE_LABELS } from "@/lib/session/types"
 import { useSessionStore } from "@/lib/session/store"
 
 export function RoleSelect() {
   const role = useSessionStore((state) => state.role)
   const setRole = useSessionStore((state) => state.setRole)
+  const roles = useSessionStore(useShallow((state) => state.roleOptions()))
+  const roleItems = Object.fromEntries(roles.map((item) => [item, ROLE_LABELS[item]]))
+
+  if (roles.length === 0) {
+    return (
+      <div className="flex w-full flex-col gap-1 sm:w-auto">
+        <label htmlFor="role-empty" className="text-sm font-medium">
+          Role
+        </label>
+        <button
+          id="role-empty"
+          type="button"
+          disabled
+          className="flex h-8 w-full items-center rounded-lg border border-input bg-muted px-2.5 text-left text-sm whitespace-nowrap text-muted-foreground sm:w-auto sm:min-w-40"
+        >
+          No roles for this vessel.
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="flex w-full flex-col gap-1 sm:w-auto">
@@ -20,7 +41,7 @@ export function RoleSelect() {
         Role
       </label>
       <Select
-        items={ROLE_LABELS}
+        items={roleItems}
         value={role}
         onValueChange={(value) => {
           if (value !== null) {
@@ -32,7 +53,7 @@ export function RoleSelect() {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {ROLES.map((item) => (
+          {roles.map((item) => (
             <SelectItem key={item} value={item}>
               {ROLE_LABELS[item]}
             </SelectItem>

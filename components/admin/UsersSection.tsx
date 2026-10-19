@@ -211,7 +211,7 @@ export function UsersSection({
 					},
 					{
 						header: "Actions",
-						width: "w-64",
+						width: "w-72",
 						align: "center",
 						cell: (member) => (
 							<DataTableActions

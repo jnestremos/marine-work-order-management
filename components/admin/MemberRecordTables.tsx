@@ -224,7 +224,7 @@ export function MemberRecordTables({
             },
             {
               header: "Actions",
-              width: "w-64",
+              width: "w-40",
               align: "center",
               cell: (record) => (
                 <DataTableActions
