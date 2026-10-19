@@ -17,9 +17,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { vesselAssignmentSummary } from "@/lib/admin/rules"
+import {
+  vesselActivationCaptainBlock,
+  vesselAssignmentSummary,
+  vesselWorkOrderBlock,
+} from "@/lib/admin/rules"
 import { vesselFormSchema, type VesselFormValues } from "@/lib/admin/schema"
 import type { Assignment, MarineFixture, Member, Vessel } from "@/lib/session/types"
+import type { WorkOrder } from "@/lib/work-orders/types"
 
 const emptyVesselForm: VesselFormValues = { name: "" }
 
@@ -27,16 +32,24 @@ export function VesselsSection({
   vessels,
   members,
   assignments,
+  orders,
   onSave,
   onSetActive,
 }: {
   vessels: Vessel[]
   members: Member[]
   assignments: Assignment[]
+  orders: WorkOrder[]
   onSave: (input: { id?: string; name: string }) => string | null
   onSetActive: (vesselId: string, active: boolean) => string | null
 }) {
-  const directory: MarineFixture = { vessels, members, assignments }
+  const directory: MarineFixture = {
+    vessels,
+    members,
+    assignments,
+    serviceRecords: [],
+    seaServices: [],
+  }
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -162,6 +175,20 @@ export function VesselsSection({
                     variant: vessel.active ? "destructive" : "success",
                     onClick: () => {
                       const nextActive = !vessel.active
+                      if (!nextActive) {
+                        const message = vesselWorkOrderBlock(orders, vessel.id, vessel.name)
+                        if (message) {
+                          setActionError(message)
+                          return
+                        }
+                      } else {
+                        const message = vesselActivationCaptainBlock(directory, vessel.id)
+                        if (message) {
+                          setActionError(message)
+                          return
+                        }
+                      }
+                      setActionError(null)
                       setPending({
                         title: nextActive ? "Activate vessel" : "Deactivate vessel",
                         description: nextActive

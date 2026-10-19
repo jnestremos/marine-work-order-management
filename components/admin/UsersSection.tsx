@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DataTable, DataTableActions } from "@/components/admin/DataTable";
+import { MemberRecordTables } from "@/components/admin/MemberRecordTables";
 import { RecordStatus } from "@/components/admin/RecordStatus";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +25,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { memberDeactivateBlock } from "@/lib/admin/rules";
+import { memberDeactivateBlock, memberWorkOrderBlock } from "@/lib/admin/rules";
 import { userFormSchema, type UserFormValues } from "@/lib/admin/schema";
 import {
 	memberName,
@@ -33,8 +34,11 @@ import {
 	type Assignment,
 	type Member,
 	type Role,
+	type SeaService,
+	type ServiceRecord,
 	type Vessel,
 } from "@/lib/session/types";
+import type { WorkOrder } from "@/lib/work-orders/types";
 
 const roleItems = Object.fromEntries(
 	ROLES.map((role) => [role, ROLE_LABELS[role]]),
@@ -52,17 +56,25 @@ export function UsersSection({
 	members,
 	vessels,
 	assignments,
+	serviceRecords,
+	seaServices,
+	orders,
 	onSave,
 	onSetActive,
 }: {
 	members: Member[];
 	vessels: Vessel[];
 	assignments: Assignment[];
+	serviceRecords: ServiceRecord[];
+	seaServices: SeaService[];
+	orders: WorkOrder[];
 	onSave: (input: {
 		id?: string;
 		firstName: string;
 		lastName: string;
 		role: Role;
+		serviceRecords: ServiceRecord[];
+		seaServices: SeaService[];
 	}) => string | null;
 	onSetActive: (memberId: string, active: boolean) => string | null;
 }) {
@@ -76,6 +88,8 @@ export function UsersSection({
 		run: () => void;
 	} | null>(null);
 	const [query, setQuery] = useState("");
+	const [serviceDrafts, setServiceDrafts] = useState<ServiceRecord[]>([]);
+	const [seaDrafts, setSeaDrafts] = useState<SeaService[]>([]);
 	const normalizedQuery = query.trim().toLowerCase();
 	const visibleMembers = normalizedQuery
 		? members.filter(
@@ -96,21 +110,37 @@ export function UsersSection({
 		resolver: zodResolver(userFormSchema),
 		defaultValues: emptyUserForm(),
 	});
+	const selectedRole = useWatch({ control, name: "role" });
+	const showRecords = selectedRole === "captain" || selectedRole === "crew";
 
 	function closeModal() {
 		setOpen(false);
 		setEditingId(null);
+		setServiceDrafts([]);
+		setSeaDrafts([]);
 		reset(emptyUserForm());
 	}
 
 	function openAdd() {
 		setEditingId(null);
+		setServiceDrafts([]);
+		setSeaDrafts([]);
 		reset(emptyUserForm());
 		setOpen(true);
 	}
 
 	function openEdit(member: Member) {
 		setEditingId(member.id);
+		setServiceDrafts(
+			serviceRecords
+				.filter((record) => record.memberId === member.id)
+				.map((record) => ({ ...record })),
+		);
+		setSeaDrafts(
+			seaServices
+				.filter((record) => record.memberId === member.id)
+				.map((record) => ({ ...record })),
+		);
 		reset({
 			firstName: member.firstName,
 			lastName: member.lastName,
@@ -125,6 +155,8 @@ export function UsersSection({
 			firstName: values.firstName,
 			lastName: values.lastName,
 			role: values.role,
+			serviceRecords: serviceDrafts,
+			seaServices: seaDrafts,
 		});
 		if (message) {
 			setError("root", { message });
@@ -212,11 +244,26 @@ export function UsersSection({
 											const nextActive = !member.active;
 											if (!nextActive) {
 												const message = memberDeactivateBlock(
-													{ vessels, members, assignments },
+													{
+														vessels,
+														members,
+														assignments,
+														serviceRecords: [],
+														seaServices: [],
+													},
 													member.id,
 												);
 												if (message) {
 													setActionError(message);
+													return;
+												}
+												const workMessage = memberWorkOrderBlock(
+													orders,
+													member.id,
+													name,
+												);
+												if (workMessage) {
+													setActionError(workMessage);
 													return;
 												}
 											}
@@ -248,7 +295,13 @@ export function UsersSection({
 					setOpen(true);
 				}}
 			>
-				<DialogContent className="sm:max-w-md">
+				<DialogContent
+					className={
+						showRecords
+							? "max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-5xl"
+							: "sm:max-w-md"
+					}
+				>
 					<DialogHeader>
 						<DialogTitle>{editingId ? "Edit user" : "Add user"}</DialogTitle>
 						<DialogDescription>
@@ -331,15 +384,24 @@ export function UsersSection({
 								{errors.root.message}
 							</p>
 						) : null}
-						<DialogFooter>
-							<Button type="button" variant="outline" onClick={closeModal}>
-								Cancel
-							</Button>
-							<Button type="submit">
-								{editingId ? "Save user" : "Add user"}
-							</Button>
-						</DialogFooter>
 					</form>
+					{showRecords ? (
+						<MemberRecordTables
+							vessels={vessels}
+							serviceRecords={serviceDrafts}
+							seaServices={seaDrafts}
+							onServiceRecordsChange={setServiceDrafts}
+							onSeaServicesChange={setSeaDrafts}
+						/>
+					) : null}
+					<DialogFooter>
+						<Button type="button" variant="outline" onClick={closeModal}>
+							Cancel
+						</Button>
+						<Button type="submit" form="user-form">
+							{editingId ? "Save user" : "Add user"}
+						</Button>
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 			<ConfirmDialog

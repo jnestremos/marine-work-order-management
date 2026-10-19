@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -236,7 +237,7 @@ function VesselOrders({
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="work-order-issue">Issue</Label>
-              <Input
+              <Textarea
                 id="work-order-issue"
                 aria-invalid={errors.issue !== undefined}
                 {...register("issue")}

@@ -1,5 +1,5 @@
-import { EmptyRecordPage } from "@/components/pages/EmptyRecordPage"
+import { ServiceRecordSection } from "@/components/records/RecordSections"
 
 export default function Page() {
-  return <EmptyRecordPage title="Service record" />
+  return <ServiceRecordSection />
 }

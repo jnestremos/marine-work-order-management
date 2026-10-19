@@ -1,4 +1,5 @@
 import { memberName, type MarineFixture, type Member } from "@/lib/session/types"
+import type { WorkOrder } from "@/lib/work-orders/types"
 
 export function duplicateName(
   records: readonly { id: string; name: string }[],
@@ -105,29 +106,143 @@ export function captainRoleBlock(directory: MarineFixture, memberId: string): st
   return captainTakenMessage(directory, vesselIds)
 }
 
-export function memberDeactivateBlock(
+function activeVesselNames(
   directory: MarineFixture,
   memberId: string,
+  exceptVesselId?: string,
+): string[] {
+  return directory.assignments
+    .filter(
+      (assignment) =>
+        assignment.memberId === memberId && assignment.vesselId !== exceptVesselId,
+    )
+    .flatMap((assignment) => {
+      const vessel = directory.vessels.find((item) => item.id === assignment.vesselId)
+      return vessel?.active ? [vessel.name] : []
+    })
+}
+
+export function captainActiveVesselBlock(
+  directory: MarineFixture,
+  memberId: string,
+  vesselId: string,
 ): string | null {
   const member = directory.members.find((item) => item.id === memberId)
-  const names = directory.assignments
+  if (!member || member.role !== "captain") {
+    return null
+  }
+  const names = activeVesselNames(directory, memberId, vesselId)
+  if (names.length === 0) {
+    return null
+  }
+  return `${memberName(member)} is already assigned to ${listed(names)}`
+}
+
+export function vesselActivationCaptainBlock(
+  directory: MarineFixture,
+  vesselId: string,
+): string | null {
+  for (const member of directory.members) {
+    if (member.role !== "captain" || !isAssigned(directory, member.id, vesselId)) {
+      continue
+    }
+    const message = captainActiveVesselBlock(directory, member.id, vesselId)
+    if (message) {
+      return message
+    }
+  }
+  return null
+}
+
+function assignedVesselNames(directory: MarineFixture, memberId: string): string[] {
+  return directory.assignments
     .filter((assignment) => assignment.memberId === memberId)
     .flatMap((assignment) => {
       const vessel = directory.vessels.find((item) => item.id === assignment.vesselId)
       return vessel ? [vessel.name] : []
     })
+}
+
+function assignmentPrerequisite(
+  directory: MarineFixture,
+  memberId: string,
+  ending: string,
+): string | null {
+  const member = directory.members.find((item) => item.id === memberId)
+  const names = assignedVesselNames(directory, memberId)
   if (names.length === 0) {
     return null
   }
   const who = member ? memberName(member) : "This user"
   if (names.length === 1) {
-    return `Remove ${who} from ${names[0]} before deactivating`
+    return `Remove ${who} from ${names[0]} ${ending}`
   }
   if (names.length === 2) {
-    return `Remove ${who} from ${names[0]} and ${names[1]} before deactivating`
+    return `Remove ${who} from ${names[0]} and ${names[1]} ${ending}`
   }
   const leading = names.slice(0, -1).join(", ")
-  return `Remove ${who} from ${leading}, and ${names[names.length - 1]} before deactivating`
+  return `Remove ${who} from ${leading}, and ${names[names.length - 1]} ${ending}`
+}
+
+export function memberDeactivateBlock(
+  directory: MarineFixture,
+  memberId: string,
+): string | null {
+  return assignmentPrerequisite(directory, memberId, "before deactivating")
+}
+
+export function memberRoleChangeBlock(
+  directory: MarineFixture,
+  memberId: string,
+): string | null {
+  return assignmentPrerequisite(directory, memberId, "before changing roles")
+}
+
+function listed(items: string[]): string {
+  if (items.length <= 1) {
+    return items[0] ?? ""
+  }
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`
+  }
+  const leading = items.slice(0, -1).join(", ")
+  return `${leading}, and ${items[items.length - 1]}`
+}
+
+function unresolvedCodes(orders: readonly WorkOrder[]): string[] {
+  return [...orders]
+    .map((order) => order.code)
+    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
+}
+
+export function memberWorkOrderBlock(
+  orders: readonly WorkOrder[],
+  memberId: string,
+  name: string,
+): string | null {
+  const pending = orders.filter(
+    (order) =>
+      order.status !== "done" &&
+      (order.assigneeId === memberId || order.createdById === memberId),
+  )
+  const codes = unresolvedCodes(pending)
+  if (codes.length === 0) {
+    return null
+  }
+  return `Resolve ${listed(codes)} before deactivating ${name}`
+}
+
+export function vesselWorkOrderBlock(
+  orders: readonly WorkOrder[],
+  vesselId: string,
+  name: string,
+): string | null {
+  const pending = orders.filter((order) => order.status !== "done" && order.vesselId === vesselId)
+  const codes = unresolvedCodes(pending)
+  if (codes.length === 0) {
+    return null
+  }
+  return `Resolve ${listed(codes)} before deactivating ${name}`
 }
 
 export function inactiveAssignmentBlock(

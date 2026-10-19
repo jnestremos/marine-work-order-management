@@ -226,6 +226,8 @@ function copyDirectory(fixture: MarineFixture): MarineFixture {
     vessels: fixture.vessels.map((vessel) => ({ ...vessel })),
     members: fixture.members.map((member) => ({ ...member })),
     assignments: fixture.assignments.map((assignment) => ({ ...assignment })),
+    serviceRecords: fixture.serviceRecords.map((record) => ({ ...record })),
+    seaServices: fixture.seaServices.map((record) => ({ ...record })),
   }
 }
 
@@ -248,6 +250,8 @@ export function createSessionStore(
     vessels: deps.vessels,
     members: deps.members,
     assignments: deps.assignments,
+    serviceRecords: deps.serviceRecords,
+    seaServices: deps.seaServices,
   }
 
   return createStore<SessionStore>()(

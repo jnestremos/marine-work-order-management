@@ -1,6 +1,7 @@
 "use client"
 
 import { useId, useState, type ReactNode } from "react"
+import { CheckboxGroup } from "@base-ui/react/checkbox-group"
 import {
   BanIcon,
   CircleCheckIcon,
@@ -10,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -79,27 +81,73 @@ type SortState = {
   direction: "asc" | "desc"
 }
 
+const CHOICE_HEADERS = new Set(["Role", "Status"])
+
+const CHOICE_ORDER = [
+  "Admin",
+  "Captain",
+  "Crew",
+  "Active",
+  "Inactive",
+  "Open",
+  "In Progress",
+  "Done",
+]
+
 function columnText<Row>(column: DataTableColumn<Row>, row: Row) {
   return column.value?.(row) ?? ""
+}
+
+function isChoiceColumn<Row>(column: DataTableColumn<Row>) {
+  return CHOICE_HEADERS.has(column.header)
+}
+
+function choiceOptions<Row>(column: DataTableColumn<Row>, rows: readonly Row[]) {
+  const values = new Set<string>()
+  for (const row of rows) {
+    const value = columnText(column, row).trim()
+    if (value.length > 0) {
+      values.add(value)
+    }
+  }
+  return [...values].sort((left, right) => {
+    const leftIndex = CHOICE_ORDER.indexOf(left)
+    const rightIndex = CHOICE_ORDER.indexOf(right)
+    const leftRank = leftIndex === -1 ? CHOICE_ORDER.length : leftIndex
+    const rightRank = rightIndex === -1 ? CHOICE_ORDER.length : rightIndex
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank
+    }
+    return left.localeCompare(right)
+  })
 }
 
 function ColumnMenu({
   header,
   filter,
+  options,
+  excluded,
   sort,
   onFilter,
+  onExcluded,
   onSort,
 }: {
   header: string
   filter: string
+  options: string[]
+  excluded: string[]
   sort: SortState | null
   onFilter: (value: string) => void
+  onExcluded: (values: string[]) => void
   onSort: (direction: "asc" | "desc" | null) => void
 }) {
   const filterId = useId()
+  const choiceLabelId = useId()
   const sortName = useId()
   const sorted = sort?.header === header ? sort.direction : null
-  const active = sorted !== null || filter.trim().length > 0
+  const choices = options.length > 0
+  const checked = options.filter((option) => !excluded.includes(option))
+  const active = sorted !== null || (choices ? excluded.length > 0 : filter.trim().length > 0)
 
   return (
     <Popover>
@@ -137,14 +185,34 @@ function ColumnMenu({
             Sort descending
           </label>
         </RadioGroup>
-        <div className="flex flex-col gap-1 border-t pt-2">
-          <Label htmlFor={filterId}>Filter {header}</Label>
-          <Input
-            id={filterId}
-            value={filter}
-            placeholder="Contains"
-            onChange={(event) => onFilter(event.target.value)}
-          />
+        <div className="flex flex-col gap-2 border-t pt-2">
+          <Label id={choices ? choiceLabelId : undefined} htmlFor={choices ? undefined : filterId}>
+            Filter {header}
+          </Label>
+          {choices ? (
+            <CheckboxGroup
+              aria-labelledby={choiceLabelId}
+              className="grid gap-2"
+              value={checked}
+              onValueChange={(value) =>
+                onExcluded(options.filter((option) => !value.includes(option)))
+              }
+            >
+              {options.map((option) => (
+                <label key={option} className="flex items-center gap-2 font-normal">
+                  <Checkbox value={option} />
+                  {option}
+                </label>
+              ))}
+            </CheckboxGroup>
+          ) : (
+            <Input
+              id={filterId}
+              value={filter}
+              placeholder="Contains"
+              onChange={(event) => onFilter(event.target.value)}
+            />
+          )}
         </div>
       </PopoverContent>
     </Popover>
@@ -158,6 +226,8 @@ export function DataTable<Row>({
   empty,
   minWidth,
   isSelected,
+  containerClassName,
+  stickyHeader,
 }: {
   columns: DataTableColumn<Row>[]
   rows: Row[]
@@ -165,12 +235,19 @@ export function DataTable<Row>({
   empty: string
   minWidth: string
   isSelected?: (row: Row) => boolean
+  containerClassName?: string
+  stickyHeader?: boolean
 }) {
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [excludedChoices, setExcludedChoices] = useState<Record<string, string[]>>({})
   const [sort, setSort] = useState<SortState | null>(null)
   const filterable = columns.filter((column) => column.value)
   const visible = rows.filter((row) =>
     filterable.every((column) => {
+      if (isChoiceColumn(column)) {
+        const excluded = excludedChoices[column.header] ?? []
+        return !excluded.includes(columnText(column, row))
+      }
       const filter = (filters[column.header] ?? "").trim().toLowerCase()
       if (filter.length === 0) {
         return true
@@ -192,8 +269,8 @@ export function DataTable<Row>({
   }
 
   return (
-    <Table className={cn("table-fixed", minWidth)}>
-      <TableHeader>
+    <Table className={cn("table-fixed", minWidth)} containerClassName={containerClassName}>
+      <TableHeader className={stickyHeader ? "sticky top-0 z-10 [&_th]:bg-popover" : undefined}>
         <TableRow>
           {columns.map((column) => (
             <TableHead
@@ -224,9 +301,14 @@ export function DataTable<Row>({
                   <ColumnMenu
                     header={column.header}
                     filter={filters[column.header] ?? ""}
+                    options={isChoiceColumn(column) ? choiceOptions(column, rows) : []}
+                    excluded={excludedChoices[column.header] ?? []}
                     sort={sort}
                     onFilter={(value) =>
                       setFilters((current) => ({ ...current, [column.header]: value }))
+                    }
+                    onExcluded={(values) =>
+                      setExcludedChoices((current) => ({ ...current, [column.header]: values }))
                     }
                     onSort={(direction) =>
                       setSort(direction ? { header: column.header, direction } : null)

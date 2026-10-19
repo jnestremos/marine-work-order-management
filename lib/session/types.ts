@@ -23,6 +23,26 @@ export type Assignment = {
   vesselId: string
 }
 
+export type ServiceRecord = {
+  id: string
+  memberId: string
+  vesselId: string
+  role: Role
+  startDate: string
+  endDate: string
+}
+
+export type SeaService = {
+  id: string
+  memberId: string
+  vesselId: string
+  role: Role
+  signOnDate: string
+  signOnPort: string
+  signOffDate: string
+  signOffPort: string
+}
+
 export type SessionState = {
   vesselId: string
   role: Role
@@ -33,6 +53,8 @@ export type MarineFixture = {
   vessels: Vessel[]
   members: Member[]
   assignments: Assignment[]
+  serviceRecords: ServiceRecord[]
+  seaServices: SeaService[]
 }
 
 export type SessionStorage = {
