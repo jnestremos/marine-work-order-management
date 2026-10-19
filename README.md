@@ -232,7 +232,14 @@ Demo data is loaded in SQL migrations with triggers paused so historical codes, 
 
 ### Deployment
 
-The live URL cell in Submission is left blank until you publish. Local/spec tests cover behavior and deliverables; production hosting is intentionally out of band of this README’s current state.
+Cloudflare Workers (OpenNext):
+
+| Setting | Value |
+| --- | --- |
+| Build command | `pnpm run build:worker` |
+| Deploy command | `npx wrangler deploy` |
+
+Or locally: `pnpm run deploy`. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` as Workers build vars / secrets.
 
 ## License
 
