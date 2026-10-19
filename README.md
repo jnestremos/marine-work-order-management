@@ -2,7 +2,27 @@
 
 Mini dashboard for vessel-scoped work orders, crew management, and multi-role operations.
 
-Built with **Next.js** (App Router), **TypeScript**, **Tailwind / shadcn**, **TanStack Query**, and **Supabase** (browser client for reads and mutations, with Postgres triggers and RLS for business rules).
+Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind CSS v4 / shadcn**, **TanStack Query**, **Zustand**, and **Supabase** (browser client for reads and mutations, with Postgres triggers and RLS for business rules). Hosted on **Vercel**.
+
+## Tech stack (Next.js)
+
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 16 App Router (`cacheComponents`, `partialPrefetching`, Turbopack) |
+| UI runtime | React 19 + TypeScript |
+| Styling | Tailwind CSS v4 (`@tailwindcss/turbopack`), shadcn / Base UI, Lucide |
+| Forms | react-hook-form + Zod |
+| Session state | Zustand (cookie-backed mock auth) |
+| Data fetching | TanStack Query — on-demand per resource, keyed by session |
+| Backend access | `@supabase/supabase-js` in the browser + Postgres RLS / triggers |
+| Request gating | `proxy.ts` redirects by role/path |
+| Tests | Vitest |
+
+### Server vs client components
+
+- **Server Components:** `app/**/page.tsx` and `app/layout.tsx` are thin route shells (fonts, metadata, `export const instant = false`). They do **not** load marine data on the server.
+- **Client Components:** session bar, shell, tables, forms, and page bodies (`"use client"`). Supabase reads/writes and TanStack Query run here because mock auth and `x-marine-*` RLS headers live in the browser.
+- **Loading UI:** page fetches show a shared `PageContentSkeleton` via `QueryState`; session hydration / `session_choices` use the same skeleton pattern for main content.
 
 ## Submission
 
@@ -19,7 +39,7 @@ Built with **Next.js** (App Router), **TypeScript**, **Tailwind / shadcn**, **Ta
 2. **Admin dashboard** — users, vessels, and vessel assignments with validation; duplicate names and unsafe deactivations are blocked in Postgres.
 3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason.
 4. **Browser Supabase client** — `lib/supabase/client.ts` + `lib/supabase/api.ts` load and mutate data; domain rules live in migrations under `supabase/migrations/`.
-5. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys. The session bar uses a lightweight `session_choices` RPC.
+5. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys. The session bar uses a lightweight `session_choices` RPC. Loading states use skeleton placeholders in the main content area.
 
 ## Specification checks
 

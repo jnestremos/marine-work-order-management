@@ -57,6 +57,8 @@ export type DataTableAction = {
   variant?: "outline" | "destructive" | "success"
 }
 
+const actionButtonClassName = "w-28 shrink-0 justify-center"
+
 export function DataTableActions({
   actions,
   fit = false,
@@ -77,6 +79,7 @@ export function DataTableActions({
               type="button"
               variant={action.variant ?? "outline"}
               size="sm"
+              className={actionButtonClassName}
               onClick={action.onClick}
             >
               {Icon ? <Icon data-icon="inline-start" /> : null}
@@ -91,7 +94,12 @@ export function DataTableActions({
   const single = actions.length === 1
 
   return (
-    <div className={cn("grid grid-cols-2 gap-2", fit && "grid-cols-1")}>
+    <div
+      className={cn(
+        "grid grid-cols-2 justify-items-center gap-2",
+        fit && "grid-cols-1",
+      )}
+    >
       {actions.map((action, index) => {
         const Icon = actionIcons[action.label]
         return (
@@ -101,9 +109,8 @@ export function DataTableActions({
             variant={action.variant ?? "outline"}
             size="sm"
             className={cn(
-              "w-full",
-              single && "col-span-2 mx-auto max-w-[calc(50%-0.25rem)]",
-              fit && "w-fit max-w-full",
+              actionButtonClassName,
+              single && "col-span-2",
             )}
             onClick={action.onClick}
           >

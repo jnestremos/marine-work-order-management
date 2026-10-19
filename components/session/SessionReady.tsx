@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import type { ReactNode } from "react"
+import { PageContentSkeleton } from "@/components/data/PageContentSkeleton"
 import { Skeleton } from "@/components/ui/skeleton"
 import { sessionStore, useSessionStore } from "@/lib/session/store"
 
@@ -16,7 +17,7 @@ function ControlSkeleton() {
 
 function SessionSkeleton() {
   return (
-    <div>
+    <div className="flex h-dvh flex-col overflow-hidden">
       <div className="sticky top-0 z-40 w-full border-b bg-background px-4 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <ControlSkeleton />
@@ -27,8 +28,8 @@ function SessionSkeleton() {
           </div>
         </div>
       </div>
-      <div className="px-4 py-8">
-        <Skeleton className="h-8 w-40" />
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+        <PageContentSkeleton />
       </div>
     </div>
   )

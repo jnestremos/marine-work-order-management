@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { PageContentSkeleton } from "@/components/data/PageContentSkeleton"
 
 export function QueryState({
   isLoading,
@@ -12,11 +13,7 @@ export function QueryState({
   children: ReactNode
 }) {
   if (isLoading) {
-    return (
-      <div className="px-1 py-4">
-        <div className="h-8 w-40 animate-pulse rounded bg-muted" />
-      </div>
-    )
+    return <PageContentSkeleton />
   }
   if (error) {
     return <p className="text-sm text-destructive">{error.message}</p>
