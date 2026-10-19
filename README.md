@@ -49,6 +49,8 @@ Apply database migrations to a linked Supabase project:
 supabase db push --linked
 ```
 
+Pushes to `main` that touch `supabase/**` also run [`.github/workflows/supabase.yml`](./.github/workflows/supabase.yml) (`supabase link` + `supabase db push`). Configure repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_DB_PASSWORD`.
+
 ## Scripts
 
 ```bash
