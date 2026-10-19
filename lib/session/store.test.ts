@@ -1,12 +1,43 @@
 import { describe, expect, it } from "vitest"
-import { marineFixture } from "@/lib/fixtures/marine"
-import { SESSION_STORAGE_KEY, type SessionStorage } from "@/lib/session/types"
+import { SESSION_STORAGE_KEY, type MarineFixture, type SessionStorage } from "@/lib/session/types"
 import {
   createSessionStore,
   defaultSession,
   resolveSession,
   type SessionState,
 } from "@/lib/session/store"
+
+/** Minimal directory for session-store unit tests. Not used at runtime. */
+const directory: MarineFixture = {
+  vessels: [
+    { id: "vessel_horizon", name: "MV Horizon", active: true },
+    { id: "vessel_aurora", name: "MV Aurora", active: true },
+    { id: "vessel_retired", name: "MV Retired", active: false },
+  ],
+  members: [
+    { id: "member_avery", firstName: "Avery", lastName: "Chen", role: "admin", active: true },
+    { id: "member_blake", firstName: "Blake", lastName: "Ortiz", role: "captain", active: true },
+    { id: "member_casey", firstName: "Casey", lastName: "Nguyen", role: "crew", active: true },
+    { id: "member_drew", firstName: "Drew", lastName: "Patel", role: "captain", active: true },
+    { id: "member_eden", firstName: "Eden", lastName: "Brooks", role: "crew", active: false },
+    { id: "member_frank", firstName: "Frank", lastName: "Adler", role: "admin", active: true },
+    { id: "member_gina", firstName: "Gina", lastName: "Morales", role: "captain", active: true },
+    { id: "member_harper", firstName: "Harper", lastName: "Singh", role: "crew", active: true },
+    { id: "member_ivan", firstName: "Ivan", lastName: "Brooks", role: "crew", active: true },
+    { id: "member_june", firstName: "June", lastName: "Okonkwo", role: "captain", active: true },
+    { id: "member_kai", firstName: "Kai", lastName: "Nakamura", role: "crew", active: true },
+  ],
+  assignments: [
+    { memberId: "member_blake", vesselId: "vessel_horizon" },
+    { memberId: "member_casey", vesselId: "vessel_horizon" },
+    { memberId: "member_drew", vesselId: "vessel_aurora" },
+    { memberId: "member_harper", vesselId: "vessel_horizon" },
+    { memberId: "member_ivan", vesselId: "vessel_horizon" },
+    { memberId: "member_kai", vesselId: "vessel_horizon" },
+  ],
+  serviceRecords: [],
+  seaServices: [],
+}
 
 const fallback: SessionState = {
   vesselId: "vessel_horizon",
@@ -20,14 +51,14 @@ function envelope(session: SessionState): string {
 
 describe("resolveSession", () => {
   it("restores the default for a missing payload", () => {
-    expect(resolveSession(null, marineFixture)).toEqual({
+    expect(resolveSession(null, directory)).toEqual({
       session: fallback,
       shouldWrite: true,
     })
   })
 
   it("restores the default for malformed JSON", () => {
-    expect(resolveSession("{not json", marineFixture)).toEqual({
+    expect(resolveSession("{not json", directory)).toEqual({
       session: fallback,
       shouldWrite: true,
     })
@@ -39,7 +70,7 @@ describe("resolveSession", () => {
       role: "admin",
       memberId: "member_avery",
     })
-    expect(resolveSession(raw, marineFixture)).toEqual({
+    expect(resolveSession(raw, directory)).toEqual({
       session: fallback,
       shouldWrite: true,
     })
@@ -51,7 +82,7 @@ describe("resolveSession", () => {
       role: "crew",
       memberId: "member_eden",
     })
-    expect(resolveSession(raw, marineFixture)).toEqual({
+    expect(resolveSession(raw, directory)).toEqual({
       session: fallback,
       shouldWrite: true,
     })
@@ -63,7 +94,7 @@ describe("resolveSession", () => {
       role: "crew",
       memberId: "member_blake",
     })
-    expect(resolveSession(raw, marineFixture)).toEqual({
+    expect(resolveSession(raw, directory)).toEqual({
       session: fallback,
       shouldWrite: true,
     })
@@ -75,7 +106,7 @@ describe("resolveSession", () => {
       role: "crew",
       memberId: null,
     }
-    expect(resolveSession(envelope(session), marineFixture)).toEqual({
+    expect(resolveSession(envelope(session), directory)).toEqual({
       session,
       shouldWrite: false,
     })
@@ -87,7 +118,7 @@ describe("resolveSession", () => {
       role: "crew",
       memberId: null,
     })
-    expect(resolveSession(raw, marineFixture)).toEqual({
+    expect(resolveSession(raw, directory)).toEqual({
       session: fallback,
       shouldWrite: true,
     })
@@ -99,7 +130,7 @@ describe("resolveSession", () => {
       role: "admin",
       memberId: "member_frank",
     }
-    expect(resolveSession(envelope(session), marineFixture)).toEqual({
+    expect(resolveSession(envelope(session), directory)).toEqual({
       session,
       shouldWrite: false,
     })
@@ -111,7 +142,7 @@ describe("resolveSession", () => {
       role: "captain",
       memberId: "member_drew",
     }
-    expect(resolveSession(envelope(session), marineFixture)).toEqual({
+    expect(resolveSession(envelope(session), directory)).toEqual({
       session,
       shouldWrite: false,
     })
@@ -133,7 +164,7 @@ function memoryStorage(): SessionStorage {
 
 describe("createSessionStore actions", () => {
   function store() {
-    return createSessionStore({ ...marineFixture, storage: memoryStorage() })
+    return createSessionStore({ ...directory, storage: memoryStorage() })
   }
 
   it("resolves a new store to MV Horizon, Admin, and Avery Chen", () => {
@@ -208,8 +239,8 @@ describe("createSessionStore actions", () => {
   it("removes a deactivated vessel from the session choices", () => {
     const session = store()
     session.getState().setDirectory({
-      ...marineFixture,
-      vessels: marineFixture.vessels.map((vessel) =>
+      ...directory,
+      vessels: directory.vessels.map((vessel) =>
         vessel.id === "vessel_aurora" ? { ...vessel, active: false } : vessel,
       ),
     })
@@ -222,8 +253,8 @@ describe("createSessionStore actions", () => {
   it("removes a deactivated user from the session choices", () => {
     const session = store()
     session.getState().setDirectory({
-      ...marineFixture,
-      members: marineFixture.members.map((member) =>
+      ...directory,
+      members: directory.members.map((member) =>
         member.id === "member_avery" ? { ...member, active: false } : member,
       ),
     })
@@ -237,8 +268,8 @@ describe("createSessionStore actions", () => {
     const session = store()
     session.getState().setRole("captain")
     session.getState().setDirectory({
-      ...marineFixture,
-      vessels: marineFixture.vessels.map((vessel) =>
+      ...directory,
+      vessels: directory.vessels.map((vessel) =>
         vessel.id === "vessel_horizon" ? { ...vessel, active: false } : vessel,
       ),
     })
@@ -271,11 +302,9 @@ describe("createSessionStore actions", () => {
 describe("createSessionStore persistence", () => {
   it("writes the default envelope when storage is empty", async () => {
     const storage = memoryStorage()
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({ ...directory, storage })
     await session.persist.rehydrate()
-    expect(storage.getItem(SESSION_STORAGE_KEY)).toBe(
-      envelope(defaultSession(marineFixture)),
-    )
+    expect(storage.getItem(SESSION_STORAGE_KEY)).toBe(envelope(defaultSession(directory)))
     expect(session.getState().hasHydrated).toBe(true)
     expect(session.getState()).toMatchObject(fallback)
   })
@@ -285,7 +314,7 @@ describe("createSessionStore persistence", () => {
     storage.setItem = () => {
       throw new Error("quota")
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({ ...directory, storage })
     session.getState().setRole("captain")
     expect(session.getState()).toMatchObject({
       vesselId: "vessel_horizon",
@@ -299,7 +328,7 @@ describe("createSessionStore persistence", () => {
     storage.setItem = () => {
       throw new Error("quota")
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({ ...directory, storage })
     await session.persist.rehydrate()
     expect(session.getState()).toMatchObject(fallback)
     expect(session.getState().hasHydrated).toBe(true)
@@ -310,7 +339,7 @@ describe("createSessionStore persistence", () => {
     storage.getItem = () => {
       throw new Error("denied")
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({ ...directory, storage })
     await session.persist.rehydrate()
     expect(session.getState().hasHydrated).toBe(true)
     expect(session.getState()).toMatchObject(fallback)
@@ -331,7 +360,7 @@ describe("createSessionStore persistence", () => {
       writes += 1
       write(name, value)
     }
-    const session = createSessionStore({ ...marineFixture, storage })
+    const session = createSessionStore({ ...directory, storage })
     await session.persist.rehydrate()
     expect(session.getState()).toMatchObject(saved)
     expect(writes).toBe(0)

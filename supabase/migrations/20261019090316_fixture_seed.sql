@@ -1,6 +1,6 @@
--- Load the marine fixture with triggers paused so historical dates, codes, and
--- solution history stay as the screens show them. New rows after this still
--- run the triggers.
+-- Seed sample marine data with triggers paused so historical dates, codes, and
+-- solution history stay as the screens show them. Row ids use column defaults
+-- (gen_random_uuid). New rows after this still run the triggers.
 
 alter table public.members disable trigger user;
 alter table public.vessels disable trigger user;
@@ -10,57 +10,178 @@ alter table public.sea_services disable trigger user;
 alter table public.work_orders disable trigger user;
 alter table public.work_order_solutions disable trigger user;
 
-insert into public.members (id, first_name, last_name, role, active) values
-  ('00000000-0000-4000-8000-000000000001', 'Avery', 'Chen', 'admin', true),
-  ('00000000-0000-4000-8000-000000000002', 'Blake', 'Ortiz', 'captain', true),
-  ('00000000-0000-4000-8000-000000000003', 'Casey', 'Nguyen', 'crew', true),
-  ('00000000-0000-4000-8000-000000000004', 'Drew', 'Patel', 'captain', true),
-  ('00000000-0000-4000-8000-000000000005', 'Eden', 'Brooks', 'crew', false),
-  ('00000000-0000-4000-8000-000000000006', 'Frank', 'Adler', 'admin', true),
-  ('00000000-0000-4000-8000-000000000007', 'Gina', 'Morales', 'captain', true),
-  ('00000000-0000-4000-8000-000000000008', 'Harper', 'Singh', 'crew', true),
-  ('00000000-0000-4000-8000-000000000009', 'Ivan', 'Brooks', 'crew', true),
-  ('00000000-0000-4000-8000-00000000000a', 'June', 'Okonkwo', 'captain', true),
-  ('00000000-0000-4000-8000-00000000000b', 'Kai', 'Nakamura', 'crew', true);
+insert into public.members (first_name, last_name, role, active) values
+  ('Avery', 'Chen', 'admin', true),
+  ('Blake', 'Ortiz', 'captain', true),
+  ('Casey', 'Nguyen', 'crew', true),
+  ('Drew', 'Patel', 'captain', true),
+  ('Eden', 'Brooks', 'crew', false),
+  ('Frank', 'Adler', 'admin', true),
+  ('Gina', 'Morales', 'captain', true),
+  ('Harper', 'Singh', 'crew', true),
+  ('Ivan', 'Brooks', 'crew', true),
+  ('June', 'Okonkwo', 'captain', true),
+  ('Kai', 'Nakamura', 'crew', true);
 
-insert into public.vessels (id, name, active) values
-  ('00000000-0000-4000-8000-000000000010', 'MV Horizon', true),
-  ('00000000-0000-4000-8000-000000000011', 'MV Aurora', true),
-  ('00000000-0000-4000-8000-000000000012', 'MV Retired', false);
+insert into public.vessels (name, active) values
+  ('MV Horizon', true),
+  ('MV Aurora', true),
+  ('MV Retired', false);
 
-insert into public.assignments (member_id, vessel_id) values
-  ('00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010'),
-  ('00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000010'),
-  ('00000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000011'),
-  ('00000000-0000-4000-8000-000000000008', '00000000-0000-4000-8000-000000000010'),
-  ('00000000-0000-4000-8000-000000000009', '00000000-0000-4000-8000-000000000010'),
-  ('00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-000000000010');
+insert into public.assignments (member_id, vessel_id)
+select m.id, v.id
+from (
+  values
+    ('Blake', 'Ortiz', 'MV Horizon'),
+    ('Casey', 'Nguyen', 'MV Horizon'),
+    ('Drew', 'Patel', 'MV Aurora'),
+    ('Harper', 'Singh', 'MV Horizon'),
+    ('Ivan', 'Brooks', 'MV Horizon'),
+    ('Kai', 'Nakamura', 'MV Horizon')
+) as link(first_name, last_name, vessel_name)
+join public.members m
+  on m.first_name = link.first_name
+ and m.last_name = link.last_name
+join public.vessels v
+  on v.name = link.vessel_name;
 
-insert into public.service_records (id, member_id, vessel_id, role, start_date, end_date) values
-  ('00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010', 'captain', '2024-03-01', null),
-  ('00000000-0000-4000-8000-000000000102', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000012', 'captain', '2021-06-15', '2024-02-20'),
-  ('00000000-0000-4000-8000-000000000103', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000010', 'crew', '2023-11-01', null),
-  ('00000000-0000-4000-8000-000000000104', '00000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000011', 'captain', '2022-04-01', null),
-  ('00000000-0000-4000-8000-000000000105', '00000000-0000-4000-8000-000000000008', '00000000-0000-4000-8000-000000000010', 'crew', '2024-08-01', null);
+insert into public.service_records (member_id, vessel_id, role, start_date, end_date)
+select m.id, v.id, link.role::public.app_role, link.start_date::date, link.end_date::date
+from (
+  values
+    ('Blake', 'Ortiz', 'MV Horizon', 'captain', '2024-03-01', null),
+    ('Blake', 'Ortiz', 'MV Retired', 'captain', '2021-06-15', '2024-02-20'),
+    ('Casey', 'Nguyen', 'MV Horizon', 'crew', '2023-11-01', null),
+    ('Drew', 'Patel', 'MV Aurora', 'captain', '2022-04-01', null),
+    ('Harper', 'Singh', 'MV Horizon', 'crew', '2024-08-01', null)
+) as link(first_name, last_name, vessel_name, role, start_date, end_date)
+join public.members m
+  on m.first_name = link.first_name
+ and m.last_name = link.last_name
+join public.vessels v
+  on v.name = link.vessel_name;
 
 insert into public.sea_services (
-  id, member_id, vessel_id, role, sign_on_date, sign_on_port, sign_off_date, sign_off_port, status, created_by_id
-) values
-  ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000010', 'captain', '2024-03-01', 'Singapore', '2024-09-12', 'Rotterdam', 'accepted', '00000000-0000-4000-8000-000000000001'),
-  ('00000000-0000-4000-8000-000000000402', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000012', 'captain', '2022-01-10', 'Manila', '2022-07-18', 'Busan', 'accepted', '00000000-0000-4000-8000-000000000001'),
-  ('00000000-0000-4000-8000-000000000403', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000010', 'crew', '2025-02-04', 'Manila', '2025-08-19', 'Singapore', 'accepted', '00000000-0000-4000-8000-000000000001'),
-  ('00000000-0000-4000-8000-000000000404', '00000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000011', 'captain', '2025-01-06', 'Dubai', '2025-06-30', 'Mumbai', 'accepted', '00000000-0000-4000-8000-000000000001'),
-  ('00000000-0000-4000-8000-000000000405', '00000000-0000-4000-8000-000000000008', '00000000-0000-4000-8000-000000000010', 'crew', '2025-03-15', 'Hong Kong', '2025-09-01', 'Kaohsiung', 'accepted', '00000000-0000-4000-8000-000000000001');
+  member_id, vessel_id, role, sign_on_date, sign_on_port, sign_off_date, sign_off_port, status, created_by_id
+)
+select
+  m.id,
+  v.id,
+  link.role::public.app_role,
+  link.sign_on_date::date,
+  link.sign_on_port,
+  link.sign_off_date::date,
+  link.sign_off_port,
+  link.status::public.review_status,
+  admin.id
+from (
+  values
+    ('Blake', 'Ortiz', 'MV Horizon', 'captain', '2024-03-01', 'Singapore', '2024-09-12', 'Rotterdam', 'accepted'),
+    ('Blake', 'Ortiz', 'MV Retired', 'captain', '2022-01-10', 'Manila', '2022-07-18', 'Busan', 'accepted'),
+    ('Casey', 'Nguyen', 'MV Horizon', 'crew', '2025-02-04', 'Manila', '2025-08-19', 'Singapore', 'accepted'),
+    ('Drew', 'Patel', 'MV Aurora', 'captain', '2025-01-06', 'Dubai', '2025-06-30', 'Mumbai', 'accepted'),
+    ('Harper', 'Singh', 'MV Horizon', 'crew', '2025-03-15', 'Hong Kong', '2025-09-01', 'Kaohsiung', 'accepted')
+) as link(
+  first_name, last_name, vessel_name, role, sign_on_date, sign_on_port, sign_off_date, sign_off_port, status
+)
+join public.members m
+  on m.first_name = link.first_name
+ and m.last_name = link.last_name
+join public.vessels v
+  on v.name = link.vessel_name
+join public.members admin
+  on admin.first_name = 'Avery'
+ and admin.last_name = 'Chen';
 
-insert into public.work_orders (id, code, vessel_id, title, issue, status, assignee_id, created_by_id) values
-  ('00000000-0000-4000-8000-000000000201', 'WO-1001', '00000000-0000-4000-8000-000000000010', 'Starboard navigation light', 'The starboard navigation light stays dark after the breaker is reset.', 'open', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000002'),
-  ('00000000-0000-4000-8000-000000000202', 'WO-1002', '00000000-0000-4000-8000-000000000010', 'Bilge pump seal', 'The engine-room bilge pump weeps around the shaft seal.', 'in_progress', '00000000-0000-4000-8000-000000000008', '00000000-0000-4000-8000-000000000002'),
-  ('00000000-0000-4000-8000-000000000203', 'WO-1003', '00000000-0000-4000-8000-000000000010', 'VHF radio check', 'Channel 16 drops out during the radio check.', 'done', '00000000-0000-4000-8000-000000000009', '00000000-0000-4000-8000-000000000002'),
-  ('00000000-0000-4000-8000-000000000204', 'WO-1004', '00000000-0000-4000-8000-000000000010', 'Fire damper latch', 'The galley fire damper latch does not hold closed.', 'open', '00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-000000000002');
+insert into public.work_orders (code, vessel_id, title, issue, status, assignee_id, created_by_id)
+select
+  link.code,
+  v.id,
+  link.title,
+  link.issue,
+  link.status::public.work_order_status,
+  assignee.id,
+  captain.id
+from (
+  values
+    (
+      'WO-1001',
+      'MV Horizon',
+      'Starboard navigation light',
+      'The starboard navigation light stays dark after the breaker is reset.',
+      'open',
+      'Casey', 'Nguyen',
+      'Blake', 'Ortiz'
+    ),
+    (
+      'WO-1002',
+      'MV Horizon',
+      'Bilge pump seal',
+      'The engine-room bilge pump weeps around the shaft seal.',
+      'in_progress',
+      'Harper', 'Singh',
+      'Blake', 'Ortiz'
+    ),
+    (
+      'WO-1003',
+      'MV Horizon',
+      'VHF radio check',
+      'Channel 16 drops out during the radio check.',
+      'done',
+      'Ivan', 'Brooks',
+      'Blake', 'Ortiz'
+    ),
+    (
+      'WO-1004',
+      'MV Horizon',
+      'Fire damper latch',
+      'The galley fire damper latch does not hold closed.',
+      'open',
+      'Kai', 'Nakamura',
+      'Blake', 'Ortiz'
+    )
+) as link(
+  code, vessel_name, title, issue, status,
+  assignee_first, assignee_last, captain_first, captain_last
+)
+join public.vessels v
+  on v.name = link.vessel_name
+join public.members assignee
+  on assignee.first_name = link.assignee_first
+ and assignee.last_name = link.assignee_last
+join public.members captain
+  on captain.first_name = link.captain_first
+ and captain.last_name = link.captain_last;
 
-insert into public.work_order_solutions (id, work_order_id, body, status, posted_at, posted_by) values
-  ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000203', 'Tightened the antenna mount.', 'rejected', '2026-10-10T08:15:00.000Z', '00000000-0000-4000-8000-000000000009'),
-  ('00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000203', 'Replaced the antenna connector and confirmed a clear radio check.', 'pending', '2026-10-12T14:40:00.000Z', '00000000-0000-4000-8000-000000000009');
+insert into public.work_order_solutions (work_order_id, body, status, posted_at, posted_by)
+select
+  wo.id,
+  link.body,
+  link.status::public.review_status,
+  link.posted_at::timestamptz,
+  crew.id
+from (
+  values
+    (
+      'WO-1003',
+      'Tightened the antenna mount.',
+      'rejected',
+      '2026-10-10T08:15:00.000Z',
+      'Ivan', 'Brooks'
+    ),
+    (
+      'WO-1003',
+      'Replaced the antenna connector and confirmed a clear radio check.',
+      'pending',
+      '2026-10-12T14:40:00.000Z',
+      'Ivan', 'Brooks'
+    )
+) as link(code, body, status, posted_at, first_name, last_name)
+join public.work_orders wo
+  on wo.code = link.code
+join public.members crew
+  on crew.first_name = link.first_name
+ and crew.last_name = link.last_name;
 
 alter table public.members enable trigger user;
 alter table public.vessels enable trigger user;
