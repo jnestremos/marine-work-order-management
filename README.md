@@ -28,8 +28,6 @@ Automated checks for the technical assessment live in [`lib/assignment/spec.test
 pnpm test
 ```
 
-Last local run: **71/71 tests passed** (including 23 assignment specification checks). App deployment is left to you. After you link Supabase, apply migrations with `supabase db push --linked` (includes rejection `review_note`). When the site is live, put the HTTPS URL in the Submission table above; optionally run `LIVE_URL=https://… pnpm test` to assert it.
-
 ## Getting started
 
 ```bash
@@ -157,6 +155,82 @@ erDiagram
 | Admin | Users, vessels, assignments, sea service history |
 | Captain | Create work orders, **Attest** or **Reject** (with reason) when `Done`, view crew |
 | Crew | Assigned work orders, solutions, own records |
+
+## Assumptions and decisions
+
+The assessment leaves several areas open. Below is how those gaps were interpreted and why.
+
+### Mock authentication (no Supabase Auth)
+
+The brief forbids email auth and asks for three dependent dropdowns that instantly switch the active user. We treated that as a **reviewer session switcher**, not a security boundary by itself:
+
+- Vessel → Role → Member choices live in a sticky bar and persist in a cookie so proxy/route redirects and reloads keep the same persona.
+- The same values are sent on every Supabase request as `x-marine-member-id`, `x-marine-role`, and `x-marine-vessel-id`.
+- Postgres loads those headers in `pgrst.db_pre_request` and RLS/triggers authorize from them.
+
+**Assumption:** a real product would replace the dropdowns with proper Auth; the header-based session is the stand-in that still lets us prove vessel/role scoping and RLS.
+
+### Where business rules live
+
+The stack prefers a **browser Supabase client**. We still put domain rules in the database (triggers + RLS) rather than in React:
+
+- Duplicate names, unsafe deactivations, assignment eligibility, work-order codes, and solution review must hold even if the UI is bypassed.
+- The client validates forms for UX; Postgres remains the source of truth and returns clear errors the UI surfaces.
+
+**Assumption:** “browser client” means reads/writes go through `supabase-js` from the browser, not that authorization logic should be client-only.
+
+### Work order statuses vs Attest / Reject
+
+The brief says statuses must be `Open`, `In Progress`, and `Done`, then also asks captains to **Attest** or **Reject** after `Done`. Those review outcomes need a durable state, so we modeled:
+
+| Status | Meaning |
+| --- | --- |
+| `open` | Created by captain, assigned to crew |
+| `in_progress` | Crew has engaged (solution path in flight) |
+| `done` | Latest solution awaiting captain review |
+| `accepted` | Captain attested — record fully closed |
+| `rejected` | Captain rejected — crew may submit another solution |
+
+Crew-facing labels still emphasize Open / In Progress / Done. Attest maps to `accepted` in the UI.
+
+**Assumption:** Attest/Reject are review outcomes beyond the three operational statuses, not a replacement for them.
+
+### Solution as history, not a single field
+
+The brief lists `Solution` as optional until filled, and Reject must send work back with a reason. We used a **`work_order_solutions` table** so:
+
+- every rejected attempt is kept for audit;
+- at most one non-rejected solution exists at a time;
+- the rejection reason is stored as `review_note` on that solution row (required when rejecting).
+
+Submitting a solution moves the order toward review (`done` / `in_progress` per triggers). Reject clears the path for a new solution without deleting history.
+
+### Work order identity
+
+“Work Order ID” could mean a UUID or a human code. We store both:
+
+- `id` — `gen_random_uuid()` primary key (never seeded as fixed fixture ids);
+- `code` — `WO-1001`, `WO-1002`, … assigned by trigger for readable lists.
+
+### Vessel scoping and admins
+
+- Captains and crew only see work orders for vessels they are assigned to (RLS).
+- Admins are **not** vessel-assigned; they may manage all vessels and directory data.
+- Session dropdowns: admins appear for any vessel; captains/crew appear only when assigned to the selected vessel and active.
+
+**Assumption:** “Admin may view and manage all vessels” means directory-wide access, not that admins are crew on every ship.
+
+### Extra domain tables
+
+Beyond the core work-order flow we kept **service records** (appointment history opened/closed by assignment) and **sea services** (voyage history with admin review). They support the marine directory the UI already had and reuse the same session/RLS patterns. They are not required to exercise the work-order lifecycle alone.
+
+### Seed data
+
+Demo data is loaded in SQL migrations with triggers paused so historical codes, dates, and a sample rejected solution remain coherent. Inserts **omit `id`** so keys come from `gen_random_uuid()`. Relationships are wired by natural keys (names / work-order codes) during seed.
+
+### Deployment
+
+The live URL cell in Submission is left blank until you publish. Local/spec tests cover behavior and deliverables; production hosting is intentionally out of band of this README’s current state.
 
 ## License
 
