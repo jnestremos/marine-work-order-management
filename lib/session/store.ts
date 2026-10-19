@@ -5,7 +5,6 @@ import {
   persist,
   type StateStorage,
 } from "zustand/middleware"
-import { marineFixture } from "@/lib/fixtures/marine"
 import { cookieStorageAdapter } from "@/lib/session/storage"
 import type {
   MarineFixture,
@@ -48,14 +47,20 @@ export function membersFor(
   )
 }
 
+const blankSession: SessionState = {
+  vesselId: "",
+  role: "admin",
+  memberId: null,
+}
+
 export function defaultSession(fixture: MarineFixture): SessionState {
   const vessel = activeVessels(fixture)[0]
   if (!vessel) {
-    throw new Error("Fixture has no active vessel")
+    return blankSession
   }
   const admin = membersFor(fixture, vessel.id, "admin")[0]
   if (!admin) {
-    throw new Error("Fixture has no active admin")
+    return { vesselId: vessel.id, role: "admin", memberId: null }
   }
   return {
     vesselId: vessel.id,
@@ -96,6 +101,19 @@ export function resolveSession(
   fixture: MarineFixture,
 ): ResolvedSession {
   const fallback = defaultSession(fixture)
+  if (activeVessels(fixture).length === 0) {
+    if (raw === null) {
+      return { session: fallback, shouldWrite: false }
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      return { session: fallback, shouldWrite: false }
+    }
+    const session = readEnvelope(parsed)
+    return { session: session ?? fallback, shouldWrite: false }
+  }
   if (raw === null) {
     return { session: fallback, shouldWrite: true }
   }
@@ -257,7 +275,7 @@ export function createSessionStore(
   return createStore<SessionStore>()(
     persist(
       (set, get) => ({
-        ...defaultSession(fixture),
+        ...(activeVessels(fixture).length === 0 ? blankSession : defaultSession(fixture)),
         directory: copyDirectory(fixture),
         hasHydrated: false,
         setHasHydrated: (hasHydrated) => set({ hasHydrated }),
@@ -335,7 +353,11 @@ export function createSessionStore(
 }
 
 export const sessionStore = createSessionStore({
-  ...marineFixture,
+  vessels: [],
+  members: [],
+  assignments: [],
+  serviceRecords: [],
+  seaServices: [],
   storage: cookieStorageAdapter,
 })
 

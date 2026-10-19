@@ -1,24 +1,25 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
+import { useMarine } from "@/components/data/MarineProvider"
 import { EmptyRole } from "@/components/views/EmptyRole"
 import { useSessionStore } from "@/lib/session/store"
 import { memberName, ROLE_LABELS } from "@/lib/session/types"
 
 export function ProfilePage() {
   const memberId = useSessionStore((state) => state.memberId)
-  const directory = useSessionStore((state) => state.directory)
-  const member = directory.members.find((item) => item.id === memberId)
+  const marine = useMarine()
+  const member = marine.members.find((item) => item.id === memberId)
 
   if (!member) {
     return <EmptyRole />
   }
 
-  const vessels = directory.assignments.flatMap((assignment) => {
+  const vessels = marine.assignments.flatMap((assignment) => {
     if (assignment.memberId !== member.id) {
       return []
     }
-    const vessel = directory.vessels.find((item) => item.id === assignment.vesselId)
+    const vessel = marine.vessels.find((item) => item.id === assignment.vesselId)
     return vessel ? [vessel.name] : []
   })
 

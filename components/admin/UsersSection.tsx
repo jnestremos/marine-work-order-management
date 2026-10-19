@@ -26,20 +26,16 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { memberDeactivateBlock, memberWorkOrderBlock } from "@/lib/admin/rules";
 import { userFormSchema, type UserFormValues } from "@/lib/admin/schema";
 import {
 	memberName,
 	ROLE_LABELS,
 	ROLES,
-	type Assignment,
 	type Member,
 	type Role,
 	type ServiceRecord,
 	type Vessel,
 } from "@/lib/session/types";
-import type { WorkOrder } from "@/lib/work-orders/types";
-
 const roleItems = Object.fromEntries(
 	ROLES.map((role) => [role, ROLE_LABELS[role]]),
 );
@@ -55,25 +51,21 @@ function emptyUserForm(): UserFormValues {
 export function UsersSection({
 	members,
 	vessels,
-	assignments,
 	serviceRecords,
-	orders,
 	onSave,
 	onSetActive,
 }: {
 	members: Member[];
 	vessels: Vessel[];
-	assignments: Assignment[];
 	serviceRecords: ServiceRecord[];
-	orders: WorkOrder[];
 	onSave: (input: {
 		id?: string;
 		firstName: string;
 		lastName: string;
 		role: Role;
 		serviceRecords: ServiceRecord[];
-	}) => string | null;
-	onSetActive: (memberId: string, active: boolean) => string | null;
+	}) => Promise<string | null>;
+	onSetActive: (memberId: string, active: boolean) => Promise<string | null>;
 }) {
 	const [open, setOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
@@ -138,8 +130,8 @@ export function UsersSection({
 		setOpen(true);
 	}
 
-	function onValid(values: UserFormValues) {
-		const message = onSave({
+	async function onValid(values: UserFormValues) {
+		const message = await onSave({
 			id: editingId ?? undefined,
 			firstName: values.firstName,
 			lastName: values.lastName,
@@ -234,31 +226,6 @@ export function UsersSection({
 										onClick: () => {
 											const name = memberName(member);
 											const nextActive = !member.active;
-											if (!nextActive) {
-												const message = memberDeactivateBlock(
-													{
-														vessels,
-														members,
-														assignments,
-														serviceRecords: [],
-														seaServices: [],
-													},
-													member.id,
-												);
-												if (message) {
-													setActionError(message);
-													return;
-												}
-												const workMessage = memberWorkOrderBlock(
-													orders,
-													member.id,
-													name,
-												);
-												if (workMessage) {
-													setActionError(workMessage);
-													return;
-												}
-											}
 											setActionError(null);
 											setPending({
 												title: nextActive ? "Activate user" : "Deactivate user",
@@ -266,8 +233,9 @@ export function UsersSection({
 													? `Activate ${name}?`
 													: `Deactivate ${name}?`,
 												confirmLabel: nextActive ? "Activate" : "Deactivate",
-												run: () =>
-													setActionError(onSetActive(member.id, nextActive)),
+												run: () => {
+													void onSetActive(member.id, nextActive).then(setActionError);
+												},
 											});
 										},
 									},

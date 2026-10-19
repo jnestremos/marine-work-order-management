@@ -17,22 +17,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  vesselActivationCaptainBlock,
-  vesselAssignmentSummary,
-  vesselWorkOrderBlock,
-} from "@/lib/admin/rules"
 import { vesselFormSchema, type VesselFormValues } from "@/lib/admin/schema"
-import { memberName, ROLE_LABELS, type Assignment, type MarineFixture, type Member, type Vessel } from "@/lib/session/types"
-import type { WorkOrder } from "@/lib/work-orders/types"
+import { memberName, ROLE_LABELS, type Assignment, type Member, type Vessel } from "@/lib/session/types"
 
 const emptyVesselForm: VesselFormValues = { name: "" }
+
+function assignmentSummary(members: Member[], assignments: Assignment[], vesselId: string) {
+  const captain = members.find(
+    (member) =>
+      member.active &&
+      member.role === "captain" &&
+      assignments.some(
+        (assignment) => assignment.memberId === member.id && assignment.vesselId === vesselId,
+      ),
+  )
+  const crew = members.filter(
+    (member) =>
+      member.active &&
+      member.role === "crew" &&
+      assignments.some(
+        (assignment) => assignment.memberId === member.id && assignment.vesselId === vesselId,
+      ),
+  ).length
+  const captainText = captain ? memberName(captain) : "No captain"
+  const crewText = crew === 0 ? "No crew" : crew === 1 ? "1 crew" : `${crew} crew`
+  return `${captainText} · ${crewText}`
+}
 
 export function VesselsSection({
   vessels,
   members,
   assignments,
-  orders,
   onSave,
   onSetActive,
   onRemoveAssignment,
@@ -40,18 +55,10 @@ export function VesselsSection({
   vessels: Vessel[]
   members: Member[]
   assignments: Assignment[]
-  orders: WorkOrder[]
-  onSave: (input: { id?: string; name: string }) => string | null
-  onSetActive: (vesselId: string, active: boolean) => string | null
-  onRemoveAssignment: (memberId: string, vesselId: string) => string | null
+  onSave: (input: { id?: string; name: string }) => Promise<string | null>
+  onSetActive: (vesselId: string, active: boolean) => Promise<string | null>
+  onRemoveAssignment: (memberId: string, vesselId: string) => Promise<string | null>
 }) {
-  const directory: MarineFixture = {
-    vessels,
-    members,
-    assignments,
-    serviceRecords: [],
-    seaServices: [],
-  }
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -107,8 +114,8 @@ export function VesselsSection({
     setOpen(true)
   }
 
-  function onValid(values: VesselFormValues) {
-    const message = onSave({ id: editingId ?? undefined, name: values.name })
+  async function onValid(values: VesselFormValues) {
+    const message = await onSave({ id: editingId ?? undefined, name: values.name })
     if (message) {
       setError("root", { message })
       return
@@ -182,7 +189,7 @@ export function VesselsSection({
               <div>
                 <div>{vessel.name}</div>
                 <p className="text-sm font-normal text-muted-foreground">
-                  {vesselAssignmentSummary(directory, vessel.id)}
+                  {assignmentSummary(members, assignments, vessel.id)}
                 </p>
               </div>
             ),
@@ -213,19 +220,6 @@ export function VesselsSection({
                     variant: vessel.active ? "destructive" : "success",
                     onClick: () => {
                       const nextActive = !vessel.active
-                      if (!nextActive) {
-                        const message = vesselWorkOrderBlock(orders, vessel.id, vessel.name)
-                        if (message) {
-                          setActionError(message)
-                          return
-                        }
-                      } else {
-                        const message = vesselActivationCaptainBlock(directory, vessel.id)
-                        if (message) {
-                          setActionError(message)
-                          return
-                        }
-                      }
                       setActionError(null)
                       setPending({
                         title: nextActive ? "Activate vessel" : "Deactivate vessel",
@@ -233,7 +227,9 @@ export function VesselsSection({
                           ? `Activate ${vessel.name}?`
                           : `Deactivate ${vessel.name}? Every assignment on this vessel will be removed.`,
                         confirmLabel: nextActive ? "Activate" : "Deactivate",
-                        run: () => setActionError(onSetActive(vessel.id, nextActive)),
+                        run: () => {
+                          void onSetActive(vessel.id, nextActive).then(setActionError)
+                        },
                       })
                     },
                   },
@@ -347,10 +343,12 @@ export function VesselsSection({
                                   title: "Remove assignment",
                                   description: `Remove ${user} from ${vesselName}?`,
                                   confirmLabel: "Remove",
-                                  run: () =>
-                                    setActionError(
-                                      onRemoveAssignment(assignment.memberId, assignment.vesselId),
-                                    ),
+                                  run: () => {
+                                    void onRemoveAssignment(
+                                      assignment.memberId,
+                                      assignment.vesselId,
+                                    ).then(setActionError)
+                                  },
                                 }),
                             },
                           ]}

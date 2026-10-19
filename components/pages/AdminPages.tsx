@@ -4,18 +4,13 @@ import { AssignmentsSection } from "@/components/admin/AssignmentsSection"
 import { useAdminDirectory } from "@/components/admin/useAdminDirectory"
 import { UsersSection } from "@/components/admin/UsersSection"
 import { VesselsSection } from "@/components/admin/VesselsSection"
-import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
-
 export function AdminUsersPage() {
   const { directory, saveUser, setMemberActive } = useAdminDirectory()
-  const { orders } = useWorkOrders()
   return (
     <UsersSection
       members={directory.members}
       vessels={directory.vessels}
-      assignments={directory.assignments}
       serviceRecords={directory.serviceRecords}
-      orders={orders}
       onSave={saveUser}
       onSetActive={setMemberActive}
     />
@@ -24,13 +19,11 @@ export function AdminUsersPage() {
 
 export function AdminVesselsPage() {
   const { directory, saveVessel, setVesselActive, removeAssignment } = useAdminDirectory()
-  const { orders } = useWorkOrders()
   return (
     <VesselsSection
       vessels={directory.vessels}
       members={directory.members}
       assignments={directory.assignments}
-      orders={orders}
       onSave={saveVessel}
       onSetActive={setVesselActive}
       onRemoveAssignment={removeAssignment}

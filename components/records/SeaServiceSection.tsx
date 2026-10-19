@@ -30,6 +30,7 @@ import {
   seaServiceFormSchema,
   type SeaServiceFormValues,
 } from "@/lib/records/schema"
+import { useMarine } from "@/components/data/MarineProvider"
 import { useSessionStore } from "@/lib/session/store"
 import {
   memberName,
@@ -65,8 +66,8 @@ export function SeaServiceSection({
   memberId?: string
   embedded?: boolean
 }) {
-  const directory = useSessionStore((state) => state.directory)
-  const setDirectory = useSessionStore((state) => state.setDirectory)
+  const marine = useMarine()
+  const directory = marine
   const sessionMemberId = useSessionStore((state) => state.memberId)
   const member = directory.members.find((item) => item.id === sessionMemberId) ?? null
   const showUser = scope === "directory" && !fixedMemberId
@@ -157,7 +158,7 @@ export function SeaServiceSection({
     setOpen(true)
   }
 
-  function save(values: SeaServiceFormValues) {
+  async function save(values: SeaServiceFormValues) {
     const nextOwnerId = fixedMemberId ?? (scope === "directory" ? ownerId : member?.id)
     const owner = directory.members.find((item) => item.id === nextOwnerId)
     if (!owner || owner.role === "admin") {
@@ -168,51 +169,30 @@ export function SeaServiceSection({
       form.setError("root", { message: "Vessel is required" })
       return
     }
-    if (editing) {
-      setDirectory({
-        ...directory,
-        seaServices: directory.seaServices.map((record) =>
-          record.id === editing.id
-            ? {
-                ...record,
-                ...values,
-                memberId: owner.id,
-                status: scope === "directory" ? record.status : "pending",
-              }
-            : record,
-        ),
-      })
-    } else {
-      setDirectory({
-        ...directory,
-        seaServices: [
-          ...directory.seaServices,
-          {
-            id: crypto.randomUUID(),
-            memberId: owner.id,
-            ...values,
-            status: scope === "directory" ? "accepted" : "pending",
-          },
-        ],
-      })
+    const message = await marine.saveSeaService({
+      id: editing?.id,
+      memberId: owner.id,
+      vesselId: values.vesselId,
+      role: values.role,
+      signOnDate: values.signOnDate,
+      signOnPort: values.signOnPort,
+      signOffDate: values.signOffDate,
+      signOffPort: values.signOffPort,
+      createdById: sessionMemberId ?? "",
+    })
+    if (message) {
+      form.setError("root", { message })
+      return
     }
     close()
   }
 
   function setStatus(record: SeaService, status: SeaServiceStatus) {
-    setDirectory({
-      ...directory,
-      seaServices: directory.seaServices.map((item) =>
-        item.id === record.id ? { ...item, status } : item,
-      ),
-    })
+    void marine.setSeaServiceStatus(record.id, status)
   }
 
   function remove(record: SeaService) {
-    setDirectory({
-      ...directory,
-      seaServices: directory.seaServices.filter((item) => item.id !== record.id),
-    })
+    void marine.removeSeaService(record.id)
   }
 
   if (!embedded && scope === "member" && !member) {

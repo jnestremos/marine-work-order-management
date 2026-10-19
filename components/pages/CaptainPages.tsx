@@ -2,6 +2,7 @@
 
 import { CaptainWorkspace } from "@/components/captain/CaptainWorkspace"
 import { DataTable } from "@/components/admin/DataTable"
+import { useMarine } from "@/components/data/MarineProvider"
 import { Badge } from "@/components/ui/badge"
 import { EmptyRole } from "@/components/views/EmptyRole"
 import { useSessionStore } from "@/lib/session/store"
@@ -21,25 +22,11 @@ export function CaptainWorkOrdersPage() {
 
 export function CaptainCrewPage() {
   const memberId = useSessionStore((state) => state.memberId)
-  const directory = useSessionStore((state) => state.directory)
-  const member = directory.members.find((item) => item.id === memberId)
-  const vessel = directory.vessels.find(
-    (item) =>
-      item.active &&
-      directory.assignments.some(
-        (assignment) => assignment.memberId === memberId && assignment.vesselId === item.id,
-      ),
-  )
-  const crew = vessel
-    ? directory.members.filter(
-        (item) =>
-          item.role === "crew" &&
-          directory.assignments.some(
-            (assignment) =>
-              assignment.memberId === item.id && assignment.vesselId === vessel.id,
-          ),
-      )
-    : []
+  const sessionVesselId = useSessionStore((state) => state.vesselId)
+  const marine = useMarine()
+  const member = marine.members.find((item) => item.id === memberId)
+  const vessel = marine.vessels.find((item) => item.id === sessionVesselId && item.active)
+  const crew = marine.members.filter((item) => item.role === "crew" && item.active)
 
   if (!member) {
     return <EmptyRole />

@@ -15,19 +15,18 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useMarine } from "@/components/data/MarineProvider"
 import { EmptyRole } from "@/components/views/EmptyRole"
 import { useSessionStore } from "@/lib/session/store"
 import { SolutionHistoryDialog } from "@/components/work-orders/SolutionHistory"
 import { WorkOrderDialog } from "@/components/work-orders/WorkOrderDialog"
-import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
-import { solutionSubmitBlock } from "@/lib/work-orders/solutions"
 import { WORK_ORDER_STATUS_LABELS, type WorkOrder } from "@/lib/work-orders/types"
 
 export function CrewWorkOrdersPage() {
   const memberId = useSessionStore((state) => state.memberId)
-  const directory = useSessionStore((state) => state.directory)
-  const member = directory.members.find((item) => item.id === memberId)
-  const { orders, submitSolution } = useWorkOrders()
+  const marine = useMarine()
+  const member = marine.members.find((item) => item.id === memberId)
+  const { orders, submitSolution } = marine
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewId, setViewId] = useState<string | null>(null)
   const [historyId, setHistoryId] = useState<string | null>(null)
@@ -61,12 +60,12 @@ export function CrewWorkOrdersPage() {
     setError(null)
   }
 
-  function send(event: FormEvent<HTMLFormElement>) {
+  async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selected || !memberId) {
       return
     }
-    const message = submitSolution(selected.id, memberId, draft)
+    const message = await submitSolution(selected.id, memberId, draft)
     setError(message)
     if (!message) {
       closeSolutions()
@@ -101,9 +100,9 @@ export function CrewWorkOrdersPage() {
             header: "Vessel",
             width: "w-40",
             value: (order) =>
-              directory.vessels.find((vessel) => vessel.id === order.vesselId)?.name ?? "",
+              marine.vessels.find((vessel) => vessel.id === order.vesselId)?.name ?? "",
             cell: (order) =>
-              directory.vessels.find((vessel) => vessel.id === order.vesselId)?.name ?? "",
+              marine.vessels.find((vessel) => vessel.id === order.vesselId)?.name ?? "",
           },
           {
             header: "Title",
@@ -132,7 +131,7 @@ export function CrewWorkOrdersPage() {
                 inline
                 actions={[
                   { label: "View", onClick: () => openView(order) },
-                  ...(solutionSubmitBlock(order)
+                  ...(order.solutions.at(-1) && order.solutions.at(-1)?.status !== "rejected"
                     ? []
                     : [{ label: "Resolve", onClick: () => openSolutions(order) }]),
                 ]}
@@ -147,7 +146,7 @@ export function CrewWorkOrdersPage() {
         description={
           viewing
             ? `${viewing.code} · ${
-                directory.vessels.find((vessel) => vessel.id === viewing.vesselId)?.name ?? ""
+                marine.vessels.find((vessel) => vessel.id === viewing.vesselId)?.name ?? ""
               }`
             : "Work order details."
         }
@@ -237,13 +236,13 @@ export function CrewWorkOrdersPage() {
 
 export function CrewVesselsPage() {
   const memberId = useSessionStore((state) => state.memberId)
-  const directory = useSessionStore((state) => state.directory)
-  const member = directory.members.find((item) => item.id === memberId)
-  const vessels = directory.assignments.flatMap((assignment) => {
+  const marine = useMarine()
+  const member = marine.members.find((item) => item.id === memberId)
+  const vessels = marine.assignments.flatMap((assignment) => {
     if (assignment.memberId !== memberId) {
       return []
     }
-    const vessel = directory.vessels.find((item) => item.id === assignment.vesselId)
+    const vessel = marine.vessels.find((item) => item.id === assignment.vesselId)
     return vessel ? [vessel] : []
   })
 

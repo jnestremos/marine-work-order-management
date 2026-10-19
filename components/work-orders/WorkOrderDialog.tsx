@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { SolutionHistoryDialog } from "@/components/work-orders/SolutionHistory"
-import { latestSolution } from "@/lib/work-orders/solutions"
 import { workOrderFormSchema, type WorkOrderFormValues } from "@/lib/work-orders/schema"
 import { WORK_ORDER_STATUS_LABELS, type WorkOrder } from "@/lib/work-orders/types"
 
@@ -60,7 +59,7 @@ export function WorkOrderDialog({
   crew?: { id: string; name: string }[]
   crewLocked?: boolean
   submitLabel?: string
-  onSubmit?: (values: WorkOrderFormValues) => string | null
+  onSubmit?: (values: WorkOrderFormValues) => Promise<string | null> | string | null
 }) {
   const [historyOpen, setHistoryOpen] = useState(false)
   const crewItems = Object.fromEntries(crew.map((member) => [member.id, member.name]))
@@ -89,8 +88,8 @@ export function WorkOrderDialog({
     onOpenChange(false)
   }
 
-  function onValid(values: WorkOrderFormValues) {
-    const message = onSubmit?.(values) ?? null
+  async function onValid(values: WorkOrderFormValues) {
+    const message = (await onSubmit?.(values)) ?? null
     if (message) {
       setError("root", { message })
       return
@@ -106,7 +105,7 @@ export function WorkOrderDialog({
     }
   }
 
-  const solution = order ? (latestSolution(order)?.text ?? "") : ""
+  const solution = order?.solutions.at(-1)?.text ?? ""
   const fields = (
     <>
       <div className="flex flex-col gap-1">

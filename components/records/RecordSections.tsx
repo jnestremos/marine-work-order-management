@@ -4,6 +4,7 @@ import { useState } from "react"
 import { DataTable } from "@/components/admin/DataTable"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useMarine } from "@/components/data/MarineProvider"
 import { formatRecordDate } from "@/lib/records/schema"
 import { useSessionStore } from "@/lib/session/store"
 import { ROLE_LABELS, type Vessel } from "@/lib/session/types"
@@ -14,17 +15,17 @@ function vesselName(vessels: Vessel[], vesselId: string) {
 }
 
 export function ServiceRecordSection() {
-  const directory = useSessionStore((state) => state.directory)
+  const marine = useMarine()
   const memberId = useSessionStore((state) => state.memberId)
-  const member = directory.members.find((item) => item.id === memberId) ?? null
-  const records = directory.serviceRecords
+  const member = marine.members.find((item) => item.id === memberId) ?? null
+  const records = marine.serviceRecords
     .filter((record) => record.memberId === member?.id)
     .sort((left, right) => right.startDate.localeCompare(left.startDate))
   const [query, setQuery] = useState("")
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
     ? records.filter((record) => {
-        const name = vesselName(directory.vessels, record.vesselId).toLowerCase()
+        const name = vesselName(marine.vessels, record.vesselId).toLowerCase()
         return (
           name.includes(normalizedQuery) ||
           ROLE_LABELS[record.role].toLowerCase().includes(normalizedQuery)
@@ -68,8 +69,8 @@ export function ServiceRecordSection() {
           {
             header: "Vessel",
             cellClassName: "font-medium",
-            value: (record) => vesselName(directory.vessels, record.vesselId),
-            cell: (record) => vesselName(directory.vessels, record.vesselId),
+            value: (record) => vesselName(marine.vessels, record.vesselId),
+            cell: (record) => vesselName(marine.vessels, record.vesselId),
           },
           {
             header: "Role",

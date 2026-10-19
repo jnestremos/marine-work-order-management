@@ -44,8 +44,8 @@ export function AssignmentsSection({
   members: Member[]
   vessels: Vessel[]
   assignments: Assignment[]
-  onAdd: (input: { memberId: string; vesselId: string }) => string | null
-  onRemove: (memberId: string, vesselId: string) => string | null
+  onAdd: (input: { memberId: string; vesselId: string }) => Promise<string | null>
+  onRemove: (memberId: string, vesselId: string) => Promise<string | null>
 }) {
   const [open, setOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -98,8 +98,8 @@ export function AssignmentsSection({
     setOpen(true)
   }
 
-  function onValid(values: AssignmentFormValues) {
-    const message = onAdd(values)
+  async function onValid(values: AssignmentFormValues) {
+    const message = await onAdd(values)
     if (message) {
       setError("root", { message })
       return
@@ -195,8 +195,9 @@ export function AssignmentsSection({
                         title: "Remove assignment",
                         description: `Remove ${user} from ${vesselName}?`,
                         confirmLabel: "Remove",
-                        run: () =>
-                          setActionError(onRemove(assignment.memberId, assignment.vesselId)),
+                        run: () => {
+                          void onRemove(assignment.memberId, assignment.vesselId).then(setActionError)
+                        },
                       })
                     },
                   },

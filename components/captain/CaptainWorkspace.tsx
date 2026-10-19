@@ -6,15 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useMarine } from "@/components/data/MarineProvider"
 import { WorkOrderDialog } from "@/components/work-orders/WorkOrderDialog"
-import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
-import { marineFixture } from "@/lib/fixtures/marine"
 import type { WorkOrderFormValues } from "@/lib/work-orders/schema"
-import {
-  captainVessels,
-  eligibleCrew,
-  workOrdersForCaptain,
-} from "@/lib/work-orders/rules"
 import { WORK_ORDER_STATUS_LABELS, type WorkOrder } from "@/lib/work-orders/types"
 import { useSessionStore } from "@/lib/session/store"
 import { memberName } from "@/lib/session/types"
@@ -22,10 +16,12 @@ import { memberName } from "@/lib/session/types"
 export function CaptainWorkspace() {
   const memberId = useSessionStore((state) => state.memberId)
   const sessionVesselId = useSessionStore((state) => state.vesselId)
-  const { orders, addWorkOrder, updateWorkOrder, reviewWorkOrder } = useWorkOrders()
-  const vessels = captainVessels(marineFixture, memberId ?? "")
-  const selected =
-    vessels.find((vessel) => vessel.id === sessionVesselId) ?? vessels[0] ?? null
+  const marine = useMarine()
+  const vessels = marine.vessels.filter((vessel) => vessel.active)
+  const selected = vessels.find((vessel) => vessel.id === sessionVesselId) ?? vessels[0] ?? null
+  const orders = [...marine.orders].sort((left, right) =>
+    right.code.localeCompare(left.code, undefined, { numeric: true }),
+  )
 
   if (!selected) {
     return <p className="text-sm text-muted-foreground">No vessel assigned.</p>
@@ -37,10 +33,10 @@ export function CaptainWorkspace() {
       vesselId={selected.id}
       vesselName={selected.name}
       captainId={memberId ?? ""}
-      orders={workOrdersForCaptain(orders, selected.id, memberId ?? "")}
-      onCreate={addWorkOrder}
-      onUpdate={updateWorkOrder}
-      onReview={reviewWorkOrder}
+      orders={orders}
+      onCreate={marine.addWorkOrder}
+      onUpdate={marine.updateWorkOrder}
+      onReview={marine.reviewWorkOrder}
     />
   )
 }
@@ -57,21 +53,27 @@ function VesselOrders({
   vesselId: string
   vesselName: string
   captainId: string
-  orders: ReturnType<typeof workOrdersForCaptain>
+  orders: WorkOrder[]
   onCreate: (input: {
     vesselId: string
     title: string
     issue: string
     assigneeId: string
     createdById: string
-  }) => string | null
-  onUpdate: (id: string, input: { title: string; issue: string; assigneeId: string }) => string | null
-  onReview: (id: string, status: "accepted" | "rejected") => void
+  }) => Promise<string | null>
+  onUpdate: (
+    id: string,
+    input: { title: string; issue: string; assigneeId: string },
+  ) => Promise<string | null>
+  onReview: (id: string, status: "accepted" | "rejected") => Promise<string | null>
 }) {
-  const crew = eligibleCrew(marineFixture, vesselId).map((member) => ({
-    id: member.id,
-    name: memberName(member),
-  }))
+  const marine = useMarine()
+  const crew = marine.members
+    .filter((member) => member.role === "crew" && member.active)
+    .map((member) => ({
+      id: member.id,
+      name: memberName(member),
+    }))
   const [open, setOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -94,7 +96,7 @@ function VesselOrders({
     setOpen(true)
   }
 
-  function submitWorkOrder(values: WorkOrderFormValues) {
+  async function submitWorkOrder(values: WorkOrderFormValues) {
     return editing
       ? onUpdate(editing.id, {
           ...values,
@@ -168,11 +170,11 @@ function VesselOrders({
             header: "Crew",
             width: "w-40",
             value: (order) => {
-              const member = marineFixture.members.find((item) => item.id === order.assigneeId)
+              const member = marine.members.find((item) => item.id === order.assigneeId)
               return member ? memberName(member) : ""
             },
             cell: (order) => {
-              const member = marineFixture.members.find((item) => item.id === order.assigneeId)
+              const member = marine.members.find((item) => item.id === order.assigneeId)
               return member ? memberName(member) : ""
             },
           },
@@ -197,12 +199,16 @@ function VesselOrders({
                   {
                     label: "Accept",
                     variant: "success",
-                    onClick: () => onReview(order.id, "accepted"),
+                    onClick: () => {
+                      void onReview(order.id, "accepted")
+                    },
                   },
                   {
                     label: "Reject",
                     variant: "destructive",
-                    onClick: () => onReview(order.id, "rejected"),
+                    onClick: () => {
+                      void onReview(order.id, "rejected")
+                    },
                   },
                 )
               }

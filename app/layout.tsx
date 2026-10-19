@@ -3,8 +3,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/shell/AppShell";
 import { SessionBar } from "@/components/session/SessionBar";
 import { SessionReady } from "@/components/session/SessionReady";
-import { WorkOrderProvider } from "@/components/work-orders/WorkOrderProvider";
+import { MarineProvider } from "@/components/data/MarineProvider";
 import "./globals.css";
+
+// Session cookie + Supabase client data are not available in the static shell.
+export const instant = false;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,10 +32,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex h-dvh flex-col overflow-hidden">
         <SessionReady>
-          <WorkOrderProvider>
+          <MarineProvider>
             <SessionBar />
             <AppShell>{children}</AppShell>
-          </WorkOrderProvider>
+          </MarineProvider>
         </SessionReady>
       </body>
     </html>
