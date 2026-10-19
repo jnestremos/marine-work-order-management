@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { HistoryIcon } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
@@ -75,6 +75,7 @@ export function WorkOrderDialog({
 }) {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [confirmAction, setConfirmAction] = useState<"close" | "save" | "attest" | null>(null)
+  const pendingSaveRef = useRef<WorkOrderFormValues | null>(null)
   const crewItems = Object.fromEntries(crew.map((member) => [member.id, member.name]))
   const editable = !readOnly && Boolean(submitLabel)
   const canReview = order?.status === "done" && Boolean(onAttest || onReject)
@@ -98,6 +99,7 @@ export function WorkOrderDialog({
     if (!open) {
       setHistoryOpen(false)
       setConfirmAction(null)
+      pendingSaveRef.current = null
     }
   }, [open])
 
@@ -125,7 +127,8 @@ export function WorkOrderDialog({
   function requestSave() {
     clearErrors("root")
     void handleSubmit(
-      () => {
+      (values) => {
+        pendingSaveRef.current = values
         setConfirmAction("save")
       },
       onInvalid,
@@ -134,7 +137,9 @@ export function WorkOrderDialog({
 
   async function confirmPending() {
     const action = confirmAction
+    const savedValues = pendingSaveRef.current
     setConfirmAction(null)
+    pendingSaveRef.current = null
     if (action === "close") {
       onCloseWorkOrder?.()
       return
@@ -143,8 +148,8 @@ export function WorkOrderDialog({
       onAttest?.()
       return
     }
-    if (action === "save") {
-      await handleSubmit(onValid, onInvalid)()
+    if (action === "save" && savedValues) {
+      await onValid(savedValues)
     }
   }
 
