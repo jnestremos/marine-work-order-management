@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { RecordStatus } from "@/components/admin/RecordStatus"
 import { Button } from "@/components/ui/button"
@@ -16,23 +17,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { vesselAssignmentSummary } from "@/lib/admin/rules"
 import { vesselFormSchema, type VesselFormValues } from "@/lib/admin/schema"
-import type { Vessel } from "@/lib/session/types"
+import type { Assignment, MarineFixture, Member, Vessel } from "@/lib/session/types"
 
 const emptyVesselForm: VesselFormValues = { name: "" }
 
 export function VesselsSection({
   vessels,
+  members,
+  assignments,
   onSave,
   onSetActive,
 }: {
   vessels: Vessel[]
+  members: Member[]
+  assignments: Assignment[]
   onSave: (input: { id?: string; name: string }) => string | null
   onSetActive: (vesselId: string, active: boolean) => string | null
 }) {
+  const directory: MarineFixture = { vessels, members, assignments }
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [pending, setPending] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    run: () => void
+  } | null>(null)
   const [query, setQuery] = useState("")
   const normalizedQuery = query.trim().toLowerCase()
   const visibleVessels = normalizedQuery
@@ -118,7 +131,14 @@ export function VesselsSection({
             header: "Name",
             cellClassName: "font-medium",
             value: (vessel) => vessel.name,
-            cell: (vessel) => vessel.name,
+            cell: (vessel) => (
+              <div>
+                <div>{vessel.name}</div>
+                <p className="text-sm font-normal text-muted-foreground">
+                  {vesselAssignmentSummary(directory, vessel.id)}
+                </p>
+              </div>
+            ),
           },
           {
             header: "Status",
@@ -139,7 +159,18 @@ export function VesselsSection({
                   },
                   {
                     label: vessel.active ? "Deactivate" : "Activate",
-                    onClick: () => setActionError(onSetActive(vessel.id, !vessel.active)),
+                    variant: vessel.active ? "destructive" : "success",
+                    onClick: () => {
+                      const nextActive = !vessel.active
+                      setPending({
+                        title: nextActive ? "Activate vessel" : "Deactivate vessel",
+                        description: nextActive
+                          ? `Activate ${vessel.name}?`
+                          : `Deactivate ${vessel.name}? Every assignment on this vessel will be removed.`,
+                        confirmLabel: nextActive ? "Activate" : "Deactivate",
+                        run: () => setActionError(onSetActive(vessel.id, nextActive)),
+                      })
+                    },
                   },
                 ]}
               />
@@ -192,6 +223,22 @@ export function VesselsSection({
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.title ?? ""}
+        description={pending?.description ?? ""}
+        confirmLabel={pending?.confirmLabel ?? "Confirm"}
+        onOpenChange={(next) => {
+          if (!next) {
+            setPending(null)
+          }
+        }}
+        onConfirm={() => {
+          const current = pending
+          setPending(null)
+          current?.run()
+        }}
+      />
     </section>
   )
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DataTable, DataTableActions } from "@/components/admin/DataTable";
 import { RecordStatus } from "@/components/admin/RecordStatus";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,16 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { memberDeactivateBlock } from "@/lib/admin/rules";
 import { userFormSchema, type UserFormValues } from "@/lib/admin/schema";
 import {
+	memberName,
 	ROLE_LABELS,
 	ROLES,
+	type Assignment,
 	type Member,
 	type Role,
+	type Vessel,
 } from "@/lib/session/types";
 
 const roleItems = Object.fromEntries(
@@ -45,10 +50,14 @@ function emptyUserForm(): UserFormValues {
 
 export function UsersSection({
 	members,
+	vessels,
+	assignments,
 	onSave,
 	onSetActive,
 }: {
 	members: Member[];
+	vessels: Vessel[];
+	assignments: Assignment[];
 	onSave: (input: {
 		id?: string;
 		firstName: string;
@@ -60,6 +69,12 @@ export function UsersSection({
 	const [open, setOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
+	const [pending, setPending] = useState<{
+		title: string;
+		description: string;
+		confirmLabel: string;
+		run: () => void;
+	} | null>(null);
 	const [query, setQuery] = useState("");
 	const normalizedQuery = query.trim().toLowerCase();
 	const visibleMembers = normalizedQuery
@@ -191,8 +206,31 @@ export function UsersSection({
 									},
 									{
 										label: member.active ? "Deactivate" : "Activate",
-										onClick: () =>
-											setActionError(onSetActive(member.id, !member.active)),
+										variant: member.active ? "destructive" : "success",
+										onClick: () => {
+											const name = memberName(member);
+											const nextActive = !member.active;
+											if (!nextActive) {
+												const message = memberDeactivateBlock(
+													{ vessels, members, assignments },
+													member.id,
+												);
+												if (message) {
+													setActionError(message);
+													return;
+												}
+											}
+											setActionError(null);
+											setPending({
+												title: nextActive ? "Activate user" : "Deactivate user",
+												description: nextActive
+													? `Activate ${name}?`
+													: `Deactivate ${name}?`,
+												confirmLabel: nextActive ? "Activate" : "Deactivate",
+												run: () =>
+													setActionError(onSetActive(member.id, nextActive)),
+											});
+										},
 									},
 								]}
 							/>
@@ -304,6 +342,22 @@ export function UsersSection({
 					</form>
 				</DialogContent>
 			</Dialog>
+			<ConfirmDialog
+				open={pending !== null}
+				title={pending?.title ?? ""}
+				description={pending?.description ?? ""}
+				confirmLabel={pending?.confirmLabel ?? "Confirm"}
+				onOpenChange={(next) => {
+					if (!next) {
+						setPending(null);
+					}
+				}}
+				onConfirm={() => {
+					const current = pending;
+					setPending(null);
+					current?.run();
+				}}
+			/>
 		</section>
 	);
 }

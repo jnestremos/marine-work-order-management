@@ -93,6 +93,18 @@ describe("resolveSession", () => {
     })
   })
 
+  it("keeps an admin on a vessel they are not assigned to", () => {
+    const session: SessionState = {
+      vesselId: "vessel_aurora",
+      role: "admin",
+      memberId: "member_frank",
+    }
+    expect(resolveSession(envelope(session), marineFixture)).toEqual({
+      session,
+      shouldWrite: false,
+    })
+  })
+
   it("keeps a saved Drew Patel session", () => {
     const session: SessionState = {
       vesselId: "vessel_aurora",
@@ -139,15 +151,30 @@ describe("createSessionStore actions", () => {
     })
   })
 
-  it("selects Avery Chen when MV Aurora has no crew", () => {
+  it("selects the first captain when MV Aurora has no crew", () => {
     const session = store()
     session.getState().setRole("crew")
     session.getState().setVesselId("vessel_aurora")
     expect(session.getState()).toMatchObject({
       vesselId: "vessel_aurora",
-      role: "admin",
-      memberId: "member_avery",
+      role: "captain",
+      memberId: "member_drew",
     })
+  })
+
+  it("keeps the admin when the vessel changes", () => {
+    const session = store()
+    session.getState().setMemberId("member_frank")
+    session.getState().setVesselId("vessel_aurora")
+    expect(session.getState()).toMatchObject({
+      vesselId: "vessel_aurora",
+      role: "admin",
+      memberId: "member_frank",
+    })
+    expect(session.getState().memberOptions().map((member) => member.id)).toEqual([
+      "member_avery",
+      "member_frank",
+    ])
   })
 
   it("selects the first captain on MV Horizon", () => {
@@ -176,6 +203,50 @@ describe("createSessionStore actions", () => {
       "member_ivan",
       "member_kai",
     ])
+  })
+
+  it("removes a deactivated vessel from the session choices", () => {
+    const session = store()
+    session.getState().setDirectory({
+      ...marineFixture,
+      vessels: marineFixture.vessels.map((vessel) =>
+        vessel.id === "vessel_aurora" ? { ...vessel, active: false } : vessel,
+      ),
+    })
+    expect(session.getState().vesselOptions().map((vessel) => vessel.id)).toEqual([
+      "vessel_horizon",
+    ])
+    expect(session.getState().vesselId).toBe("vessel_horizon")
+  })
+
+  it("removes a deactivated user from the session choices", () => {
+    const session = store()
+    session.getState().setDirectory({
+      ...marineFixture,
+      members: marineFixture.members.map((member) =>
+        member.id === "member_avery" ? { ...member, active: false } : member,
+      ),
+    })
+    expect(session.getState().memberOptions().map((member) => member.id)).toEqual([
+      "member_frank",
+    ])
+    expect(session.getState().memberId).toBe("member_frank")
+  })
+
+  it("moves off a deactivated vessel to a role that vessel still has", () => {
+    const session = store()
+    session.getState().setRole("captain")
+    session.getState().setDirectory({
+      ...marineFixture,
+      vessels: marineFixture.vessels.map((vessel) =>
+        vessel.id === "vessel_horizon" ? { ...vessel, active: false } : vessel,
+      ),
+    })
+    expect(session.getState()).toMatchObject({
+      vesselId: "vessel_aurora",
+      role: "captain",
+      memberId: "member_drew",
+    })
   })
 
   it("ignores an inactive vessel id", () => {

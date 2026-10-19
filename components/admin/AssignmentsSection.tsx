@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,7 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { assignmentFormSchema, type AssignmentFormValues } from "@/lib/admin/schema"
-import { memberName, type Assignment, type Member, type Vessel } from "@/lib/session/types"
+import {
+  memberName,
+  ROLE_LABELS,
+  type Assignment,
+  type Member,
+  type Vessel,
+} from "@/lib/session/types"
 
 const emptyAssignmentForm: AssignmentFormValues = { memberId: "", vesselId: "" }
 
@@ -42,6 +49,12 @@ export function AssignmentsSection({
 }) {
   const [open, setOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [pending, setPending] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    run: () => void
+  } | null>(null)
   const [query, setQuery] = useState("")
   const normalizedQuery = query.trim().toLowerCase()
   const visibleAssignments = normalizedQuery
@@ -56,8 +69,11 @@ export function AssignmentsSection({
         )
       })
     : assignments
+  const assignableMembers = members.filter(
+    (member) => member.active && member.role !== "admin",
+  )
   const memberItems = Object.fromEntries(
-    members.map((member) => [member.id, memberName(member)]),
+    assignableMembers.map((member) => [member.id, memberName(member)]),
   )
   const vesselItems = Object.fromEntries(vessels.map((vessel) => [vessel.id, vessel.name]))
   const {
@@ -95,7 +111,7 @@ export function AssignmentsSection({
     <section className="overflow-hidden rounded-xl border bg-card">
       <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
         <div>
-          <h2 className="text-base font-semibold">Assignments</h2>
+          <h2 className="text-base font-semibold">Crew assignments</h2>
           <p className="text-sm text-muted-foreground">
             {assignments.length}{" "}
             {assignments.length === 1 ? "assignment" : "assignments"}
@@ -123,7 +139,7 @@ export function AssignmentsSection({
         </p>
       ) : null}
       <DataTable
-        minWidth="min-w-[40rem]"
+        minWidth="min-w-[48rem]"
         empty={normalizedQuery ? "No matching assignments." : "No assignments yet."}
         rows={visibleAssignments}
         getRowKey={(assignment) => `${assignment.memberId}:${assignment.vesselId}`}
@@ -138,6 +154,18 @@ export function AssignmentsSection({
             cell: (assignment) => {
               const member = members.find((item) => item.id === assignment.memberId)
               return member ? memberName(member) : ""
+            },
+          },
+          {
+            header: "Role",
+            width: "w-36",
+            value: (assignment) => {
+              const member = members.find((item) => item.id === assignment.memberId)
+              return member ? ROLE_LABELS[member.role] : ""
+            },
+            cell: (assignment) => {
+              const member = members.find((item) => item.id === assignment.memberId)
+              return member ? ROLE_LABELS[member.role] : ""
             },
           },
           {
@@ -157,8 +185,19 @@ export function AssignmentsSection({
                 actions={[
                   {
                     label: "Remove",
-                    onClick: () =>
-                      setActionError(onRemove(assignment.memberId, assignment.vesselId)),
+                    onClick: () => {
+                      const member = members.find((item) => item.id === assignment.memberId)
+                      const vessel = vessels.find((item) => item.id === assignment.vesselId)
+                      const user = member ? memberName(member) : "this user"
+                      const vesselName = vessel?.name ?? "this vessel"
+                      setPending({
+                        title: "Remove assignment",
+                        description: `Remove ${user} from ${vesselName}?`,
+                        confirmLabel: "Remove",
+                        run: () =>
+                          setActionError(onRemove(assignment.memberId, assignment.vesselId)),
+                      })
+                    },
                   },
                 ]}
               />
@@ -179,7 +218,9 @@ export function AssignmentsSection({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add assignment</DialogTitle>
-            <DialogDescription>Choose a user and a vessel.</DialogDescription>
+            <DialogDescription>
+              Choose an active captain or crew member and a vessel.
+            </DialogDescription>
           </DialogHeader>
           <form
             id="assignment-form"
@@ -205,7 +246,7 @@ export function AssignmentsSection({
                       <SelectValue placeholder="Select a user" />
                     </SelectTrigger>
                     <SelectContent>
-                      {members.map((member) => (
+                      {assignableMembers.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {memberName(member)}
                         </SelectItem>
@@ -264,6 +305,22 @@ export function AssignmentsSection({
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.title ?? ""}
+        description={pending?.description ?? ""}
+        confirmLabel={pending?.confirmLabel ?? "Confirm"}
+        onOpenChange={(next) => {
+          if (!next) {
+            setPending(null)
+          }
+        }}
+        onConfirm={() => {
+          const current = pending
+          setPending(null)
+          current?.run()
+        }}
+      />
     </section>
   )
 }

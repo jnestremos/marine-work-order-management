@@ -18,6 +18,24 @@ export function VesselSelect() {
     vessels.map((vessel) => [vessel.id, vessel.name]),
   )
 
+  if (vessels.length === 0) {
+    return (
+      <div className="flex w-full flex-col gap-1 sm:w-auto">
+        <label htmlFor="vessel-empty" className="text-sm font-medium">
+          Vessel
+        </label>
+        <button
+          id="vessel-empty"
+          type="button"
+          disabled
+          className="flex h-8 w-full items-center rounded-lg border border-input bg-muted px-2.5 text-left text-sm whitespace-nowrap text-muted-foreground sm:w-auto sm:min-w-40"
+        >
+          No active vessels.
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="flex w-full flex-col gap-1 sm:w-auto">
       <label htmlFor="vessel-select" className="text-sm font-medium">

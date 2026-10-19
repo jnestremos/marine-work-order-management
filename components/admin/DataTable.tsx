@@ -1,7 +1,14 @@
 "use client"
 
 import { useId, useState, type ReactNode } from "react"
-import { ListFilterIcon } from "lucide-react"
+import {
+  BanIcon,
+  CircleCheckIcon,
+  ListFilterIcon,
+  PencilIcon,
+  Trash2Icon,
+  type LucideIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -26,9 +33,17 @@ export type DataTableColumn<Row> = {
   value?: (row: Row) => string
 }
 
+const actionIcons: Record<string, LucideIcon> = {
+  Edit: PencilIcon,
+  Deactivate: BanIcon,
+  Activate: CircleCheckIcon,
+  Remove: Trash2Icon,
+}
+
 export type DataTableAction = {
   label: string
   onClick: () => void
+  variant?: "outline" | "destructive" | "success"
 }
 
 export function DataTableActions({ actions }: { actions: DataTableAction[] }) {
@@ -36,21 +51,25 @@ export function DataTableActions({ actions }: { actions: DataTableAction[] }) {
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      {actions.map((action, index) => (
-        <Button
-          key={`${action.label}-${index}`}
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn(
-            "w-full",
-            single && "col-span-2 mx-auto max-w-[calc(50%-0.25rem)]",
-          )}
-          onClick={action.onClick}
-        >
-          {action.label}
-        </Button>
-      ))}
+      {actions.map((action, index) => {
+        const Icon = actionIcons[action.label]
+        return (
+          <Button
+            key={`${action.label}-${index}`}
+            type="button"
+            variant={action.variant ?? "outline"}
+            size="sm"
+            className={cn(
+              "w-full",
+              single && "col-span-2 mx-auto max-w-[calc(50%-0.25rem)]",
+            )}
+            onClick={action.onClick}
+          >
+            {Icon ? <Icon data-icon="inline-start" /> : null}
+            {action.label}
+          </Button>
+        )
+      })}
     </div>
   )
 }

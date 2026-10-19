@@ -34,7 +34,6 @@ import {
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/work-orders/types"
 import { useSessionStore } from "@/lib/session/store"
 import { memberName } from "@/lib/session/types"
-import { cn } from "cn"
 
 const emptyWorkOrderForm: WorkOrderFormValues = {
   title: "",
@@ -47,44 +46,22 @@ export function CaptainWorkspace() {
   const sessionVesselId = useSessionStore((state) => state.vesselId)
   const { orders, addWorkOrder } = useWorkOrders()
   const vessels = captainVessels(marineFixture, memberId ?? "")
-  const selectionKey = `${memberId ?? ""}:${sessionVesselId}`
-  const [selection, setSelection] = useState({ key: "", vesselId: "" })
-  const selectedFromSession = vessels.find((vessel) => vessel.id === sessionVesselId)
-  const selectedId =
-    selection.key === selectionKey && vessels.some((vessel) => vessel.id === selection.vesselId)
-      ? selection.vesselId
-      : (selectedFromSession ?? vessels[0])?.id ?? ""
-  const selected = vessels.find((vessel) => vessel.id === selectedId) ?? null
+  const selected =
+    vessels.find((vessel) => vessel.id === sessionVesselId) ?? vessels[0] ?? null
 
   if (!selected) {
-    return <p className="text-sm text-muted-foreground">No vessels assigned.</p>
+    return <p className="text-sm text-muted-foreground">No vessel assigned.</p>
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-[16rem_minmax(0,1fr)]">
-      <div className="flex flex-col gap-1">
-        {vessels.map((vessel) => (
-          <Button
-            key={vessel.id}
-            type="button"
-            variant={vessel.id === selected.id ? "secondary" : "ghost"}
-            className={cn("justify-start", vessel.id === selected.id && "font-medium")}
-            aria-current={vessel.id === selected.id ? "true" : undefined}
-            onClick={() => setSelection({ key: selectionKey, vesselId: vessel.id })}
-          >
-            {vessel.name}
-          </Button>
-        ))}
-      </div>
-      <VesselOrders
-        key={`${memberId ?? ""}:${selected.id}`}
-        vesselId={selected.id}
-        vesselName={selected.name}
-        captainId={memberId ?? ""}
-        orders={workOrdersForCaptain(orders, selected.id, memberId ?? "")}
-        onCreate={addWorkOrder}
-      />
-    </div>
+    <VesselOrders
+      key={`${memberId ?? ""}:${selected.id}`}
+      vesselId={selected.id}
+      vesselName={selected.name}
+      captainId={memberId ?? ""}
+      orders={workOrdersForCaptain(orders, selected.id, memberId ?? "")}
+      onCreate={addWorkOrder}
+    />
   )
 }
 

@@ -33,6 +33,9 @@ export function membersFor(
   vesselId: string,
   role: Role,
 ): Member[] {
+  if (role === "admin") {
+    return fixture.members.filter((member) => member.active && member.role === "admin")
+  }
   return fixture.members.filter(
     (member) =>
       member.active &&
@@ -52,7 +55,7 @@ export function defaultSession(fixture: MarineFixture): SessionState {
   }
   const admin = membersFor(fixture, vessel.id, "admin")[0]
   if (!admin) {
-    throw new Error("Fixture has no active admin on the default vessel")
+    throw new Error("Fixture has no active admin")
   }
   return {
     vesselId: vessel.id,
@@ -181,9 +184,56 @@ function persistStorage(
   }
 }
 
+export function sessionForDirectory(
+  directory: MarineFixture,
+  session: SessionState,
+): SessionState {
+  const vessels = activeVessels(directory)
+  let vesselId = session.vesselId
+  let role = session.role
+  let memberId = session.memberId
+  if (!vessels.some((vessel) => vessel.id === vesselId)) {
+    const nextVessel = vessels[0]
+    if (!nextVessel) {
+      return { vesselId, role, memberId: null }
+    }
+    vesselId = nextVessel.id
+  }
+  if (role === "admin") {
+    const admins = membersFor(directory, vesselId, "admin")
+    const still = admins.find((member) => member.id === memberId)
+    return { vesselId, role, memberId: still?.id ?? admins[0]?.id ?? null }
+  }
+  const current = membersFor(directory, vesselId, role)
+  if (current.length > 0) {
+    const still = current.find((member) => member.id === memberId)
+    return { vesselId, role, memberId: still?.id ?? current[0].id }
+  }
+  for (const nextRole of ROLES) {
+    if (nextRole === "admin") {
+      continue
+    }
+    const options = membersFor(directory, vesselId, nextRole)
+    if (options.length > 0) {
+      return { vesselId, role: nextRole, memberId: options[0].id }
+    }
+  }
+  return { vesselId, role, memberId: null }
+}
+
+function copyDirectory(fixture: MarineFixture): MarineFixture {
+  return {
+    vessels: fixture.vessels.map((vessel) => ({ ...vessel })),
+    members: fixture.members.map((member) => ({ ...member })),
+    assignments: fixture.assignments.map((assignment) => ({ ...assignment })),
+  }
+}
+
 export type SessionStore = SessionState & {
+  directory: MarineFixture
   hasHydrated: boolean
   setHasHydrated: (hasHydrated: boolean) => void
+  setDirectory: (directory: MarineFixture) => void
   vesselOptions: () => Vessel[]
   memberOptions: () => Member[]
   setVesselId: (vesselId: string) => void
@@ -204,24 +254,41 @@ export function createSessionStore(
     persist(
       (set, get) => ({
         ...defaultSession(fixture),
+        directory: copyDirectory(fixture),
         hasHydrated: false,
         setHasHydrated: (hasHydrated) => set({ hasHydrated }),
-        vesselOptions: () => activeVessels(fixture),
-        memberOptions: () => membersFor(fixture, get().vesselId, get().role),
+        setDirectory: (directory) => {
+          set({ directory, ...sessionForDirectory(directory, get()) })
+        },
+        vesselOptions: () => activeVessels(get().directory),
+        memberOptions: () =>
+          membersFor(get().directory, get().vesselId, get().role),
         setVesselId: (vesselId) => {
-          const vessel = fixture.vessels.find(
+          const directory = get().directory
+          const vessel = directory.vessels.find(
             (item) => item.id === vesselId && item.active,
           )
           if (!vessel) {
             return
           }
-          const current = membersFor(fixture, vesselId, get().role)
+          if (get().role === "admin") {
+            const admin =
+              membersFor(directory, vesselId, "admin").find(
+                (member) => member.id === get().memberId,
+              ) ?? membersFor(directory, vesselId, "admin")[0]
+            set({ vesselId, memberId: admin?.id ?? null })
+            return
+          }
+          const current = membersFor(directory, vesselId, get().role)
           if (current.length > 0) {
             set({ vesselId, memberId: current[0].id })
             return
           }
           for (const role of ROLES) {
-            const options = membersFor(fixture, vesselId, role)
+            if (role === "admin") {
+              continue
+            }
+            const options = membersFor(directory, vesselId, role)
             if (options.length > 0) {
               set({ vesselId, role, memberId: options[0].id })
               return
@@ -233,11 +300,11 @@ export function createSessionStore(
           if (!isRole(role)) {
             return
           }
-          const options = membersFor(fixture, get().vesselId, role)
+          const options = membersFor(get().directory, get().vesselId, role)
           set({ role, memberId: options[0]?.id ?? null })
         },
         setMemberId: (memberId) => {
-          const match = membersFor(fixture, get().vesselId, get().role).find(
+          const match = membersFor(get().directory, get().vesselId, get().role).find(
             (member) => member.id === memberId,
           )
           if (!match) {

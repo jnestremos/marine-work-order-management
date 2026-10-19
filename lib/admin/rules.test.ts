@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest"
 import {
+  adminAssignmentBlock,
+  captainAssignmentBlock,
+  captainRoleBlock,
   duplicateAssignment,
   duplicateName,
-  lastAdminBlock,
+  inactiveAssignmentBlock,
+  memberDeactivateBlock,
+  vesselAssignmentSummary,
+  withoutVesselAssignments,
 } from "@/lib/admin/rules"
+import { marineFixture } from "@/lib/fixtures/marine"
 import { memberName, type MarineFixture } from "@/lib/session/types"
 
 const sample: MarineFixture = {
@@ -19,22 +26,10 @@ const sample: MarineFixture = {
     { id: "member_eden", firstName: "Eden", lastName: "Brooks", role: "crew", active: false },
   ],
   assignments: [
-    { memberId: "member_avery", vesselId: "vessel_horizon" },
-    { memberId: "member_avery", vesselId: "vessel_aurora" },
-    { memberId: "member_frank", vesselId: "vessel_horizon" },
-    { memberId: "member_frank", vesselId: "vessel_aurora" },
     { memberId: "member_blake", vesselId: "vessel_horizon" },
+    { memberId: "member_blake", vesselId: "vessel_aurora" },
     { memberId: "member_eden", vesselId: "vessel_horizon" },
   ],
-}
-
-function withoutFrank(directory: MarineFixture): MarineFixture {
-  return {
-    ...directory,
-    members: directory.members.map((member) =>
-      member.id === "member_frank" ? { ...member, active: false } : member,
-    ),
-  }
 }
 
 function userNames(members: MarineFixture["members"]) {
@@ -59,147 +54,112 @@ describe("duplicateName", () => {
   })
 })
 
+describe("withoutVesselAssignments", () => {
+  it("removes every assignment for the deactivated vessel", () => {
+    expect(withoutVesselAssignments(sample.assignments, "vessel_horizon")).toEqual([
+      { memberId: "member_blake", vesselId: "vessel_aurora" },
+    ])
+  })
+})
+
 describe("duplicateAssignment", () => {
   it("rejects a user already assigned to that vessel", () => {
     expect(
-      duplicateAssignment(sample.assignments, "member_avery", "vessel_horizon"),
+      duplicateAssignment(sample.assignments, "member_blake", "vessel_horizon"),
     ).toBe(true)
   })
 
   it("allows a new pair", () => {
     expect(
-      duplicateAssignment(sample.assignments, "member_blake", "vessel_aurora"),
+      duplicateAssignment(sample.assignments, "member_eden", "vessel_aurora"),
     ).toBe(false)
   })
 })
 
-describe("lastAdminBlock", () => {
-  it("allows deactivating Avery while Frank is still an active admin", () => {
-    expect(
-      lastAdminBlock(sample, {
-        type: "deactivate-member",
-        memberId: "member_avery",
-      }),
-    ).toBeNull()
+describe("memberDeactivateBlock", () => {
+  it("names every vessel the user is still assigned to", () => {
+    expect(memberDeactivateBlock(sample, "member_blake")).toBe(
+      "Remove Blake Ortiz from MV Horizon and MV Aurora before deactivating",
+    )
   })
 
-  it("names every vessel when deactivating the last active admin", () => {
-    expect(
-      lastAdminBlock(withoutFrank(sample), {
-        type: "deactivate-member",
-        memberId: "member_avery",
-      }),
-    ).toBe("MV Horizon and MV Aurora need an active admin")
+  it("names one vessel", () => {
+    expect(memberDeactivateBlock(sample, "member_eden")).toBe(
+      "Remove Eden Brooks from MV Horizon before deactivating",
+    )
   })
 
-  it("uses a serial comma for three vessels", () => {
-    const three = withoutFrank(sample)
-    const directory: MarineFixture = {
-      ...three,
-      vessels: [
-        ...three.vessels,
-        { id: "vessel_north", name: "MV North", active: true },
-      ],
-      assignments: [
-        ...three.assignments,
-        { memberId: "member_avery", vesselId: "vessel_north" },
-      ],
-    }
-    expect(
-      lastAdminBlock(directory, {
-        type: "deactivate-member",
-        memberId: "member_avery",
-      }),
-    ).toBe("MV Horizon, MV Aurora, and MV North need an active admin")
+  it("allows a user with no assignments", () => {
+    expect(memberDeactivateBlock(sample, "member_avery")).toBeNull()
+  })
+})
+
+describe("inactiveAssignmentBlock", () => {
+  it("rejects a deactivated user", () => {
+    expect(inactiveAssignmentBlock(sample, "member_eden")).toBe(
+      "Deactivated users are not assigned to vessels",
+    )
   })
 
-  it("names every vessel when the last admin changes role", () => {
-    expect(
-      lastAdminBlock(withoutFrank(sample), {
-        type: "set-member-role",
-        memberId: "member_avery",
-        role: "captain",
-      }),
-    ).toBe("MV Horizon and MV Aurora need an active admin")
+  it("allows an active user", () => {
+    expect(inactiveAssignmentBlock(sample, "member_blake")).toBeNull()
+  })
+})
+
+describe("adminAssignmentBlock", () => {
+  it("rejects an admin", () => {
+    expect(adminAssignmentBlock(sample, "member_avery")).toBe(
+      "Admins are not assigned to vessels",
+    )
   })
 
-  it("allows changing a role to admin", () => {
-    expect(
-      lastAdminBlock(sample, {
-        type: "set-member-role",
-        memberId: "member_blake",
-        role: "admin",
-      }),
-    ).toBeNull()
+  it("allows a captain", () => {
+    expect(adminAssignmentBlock(sample, "member_blake")).toBeNull()
+  })
+})
+
+describe("vesselAssignmentSummary", () => {
+  it("names the captain and counts assigned crew", () => {
+    expect(vesselAssignmentSummary(marineFixture, "vessel_horizon")).toBe(
+      "Blake Ortiz · 4 crew",
+    )
+    expect(vesselAssignmentSummary(marineFixture, "vessel_aurora")).toBe(
+      "Drew Patel · No crew",
+    )
+    expect(vesselAssignmentSummary(marineFixture, "vessel_retired")).toBe(
+      "No captain · No crew",
+    )
+  })
+})
+
+describe("captainAssignmentBlock", () => {
+  it("rejects a second captain on the same vessel", () => {
+    expect(captainAssignmentBlock(marineFixture, "member_gina", "vessel_horizon")).toBe(
+      "MV Horizon already has a captain",
+    )
   })
 
-  it("allows deactivating someone who is not an active admin", () => {
-    expect(
-      lastAdminBlock(sample, {
-        type: "deactivate-member",
-        memberId: "member_blake",
-      }),
-    ).toBeNull()
+  it("allows the captain already assigned to that vessel", () => {
+    expect(captainAssignmentBlock(marineFixture, "member_blake", "vessel_horizon")).toBeNull()
   })
 
-  it("names the vessel when its last admin assignment is removed", () => {
-    expect(
-      lastAdminBlock(withoutFrank(sample), {
-        type: "remove-assignment",
-        memberId: "member_avery",
-        vesselId: "vessel_horizon",
-      }),
-    ).toBe("MV Horizon needs an active admin")
+  it("allows a captain on a vessel that has none", () => {
+    expect(captainAssignmentBlock(marineFixture, "member_gina", "vessel_retired")).toBeNull()
   })
 
-  it("allows removing an admin from an inactive vessel", () => {
-    const directory: MarineFixture = {
-      ...withoutFrank(sample),
-      assignments: [
-        ...sample.assignments,
-        { memberId: "member_avery", vesselId: "vessel_retired" },
-      ],
-    }
-    expect(
-      lastAdminBlock(directory, {
-        type: "remove-assignment",
-        memberId: "member_avery",
-        vesselId: "vessel_retired",
-      }),
-    ).toBeNull()
+  it("allows crew on a vessel that already has a captain", () => {
+    expect(captainAssignmentBlock(marineFixture, "member_casey", "vessel_aurora")).toBeNull()
+  })
+})
+
+describe("captainRoleBlock", () => {
+  it("rejects promoting a member on a vessel that already has a captain", () => {
+    expect(captainRoleBlock(marineFixture, "member_casey")).toBe(
+      "MV Horizon already has a captain",
+    )
   })
 
-  it("blocks activating a vessel that has no active admin", () => {
-    expect(
-      lastAdminBlock(sample, {
-        type: "activate-vessel",
-        vesselId: "vessel_retired",
-      }),
-    ).toBe("MV Retired needs an active admin")
-  })
-
-  it("allows activating a vessel after an active admin is assigned", () => {
-    const directory: MarineFixture = {
-      ...sample,
-      assignments: [
-        ...sample.assignments,
-        { memberId: "member_avery", vesselId: "vessel_retired" },
-      ],
-    }
-    expect(
-      lastAdminBlock(directory, {
-        type: "activate-vessel",
-        vesselId: "vessel_retired",
-      }),
-    ).toBeNull()
-  })
-
-  it("allows deactivating a vessel", () => {
-    expect(
-      lastAdminBlock(sample, {
-        type: "deactivate-vessel",
-        vesselId: "vessel_horizon",
-      }),
-    ).toBeNull()
+  it("allows promoting a member who is not assigned", () => {
+    expect(captainRoleBlock(marineFixture, "member_june")).toBeNull()
   })
 })
