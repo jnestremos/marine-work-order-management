@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import { HistoryIcon } from "lucide-react"
 import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,30 +15,13 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { RecordStatus } from "@/components/admin/RecordStatus"
 import { EmptyRole } from "@/components/views/EmptyRole"
 import { useSessionStore } from "@/lib/session/store"
 import { SolutionHistoryDialog } from "@/components/work-orders/SolutionHistory"
+import { WorkOrderDialog } from "@/components/work-orders/WorkOrderDialog"
 import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
 import { solutionSubmitBlock } from "@/lib/work-orders/solutions"
-import {
-  WORK_ORDER_STATUS_LABELS,
-  type WorkOrder,
-  type WorkOrderStatus,
-} from "@/lib/work-orders/types"
-
-const statusClassName: Partial<Record<WorkOrderStatus, string>> = {
-  accepted: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-}
-
-function WorkOrderStatusBadge({ status }: { status: WorkOrderStatus }) {
-  return (
-    <Badge variant="secondary" className={statusClassName[status]}>
-      {WORK_ORDER_STATUS_LABELS[status]}
-    </Badge>
-  )
-}
+import { WORK_ORDER_STATUS_LABELS, type WorkOrder } from "@/lib/work-orders/types"
 
 export function CrewWorkOrdersPage() {
   const memberId = useSessionStore((state) => state.memberId)
@@ -45,6 +29,7 @@ export function CrewWorkOrdersPage() {
   const member = directory.members.find((item) => item.id === memberId)
   const { orders, submitSolution } = useWorkOrders()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [viewId, setViewId] = useState<string | null>(null)
   const [historyId, setHistoryId] = useState<string | null>(null)
   const [draft, setDraft] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -52,8 +37,16 @@ export function CrewWorkOrdersPage() {
     .filter((order) => order.assigneeId === memberId)
     .sort((left, right) => right.code.localeCompare(left.code, undefined, { numeric: true }))
   const selected = mine.find((order) => order.id === selectedId) ?? null
+  const viewing = mine.find((order) => order.id === viewId) ?? null
   const history = mine.find((order) => order.id === historyId) ?? null
-  const submitBlock = selected ? solutionSubmitBlock(selected) : null
+
+  function openView(order: WorkOrder) {
+    setViewId(order.id)
+  }
+
+  function closeView() {
+    setViewId(null)
+  }
 
   function openSolutions(order: WorkOrder) {
     setSelectedId(order.id)
@@ -63,6 +56,7 @@ export function CrewWorkOrdersPage() {
 
   function closeSolutions() {
     setSelectedId(null)
+    setHistoryId(null)
     setDraft("")
     setError(null)
   }
@@ -75,7 +69,7 @@ export function CrewWorkOrdersPage() {
     const message = submitSolution(selected.id, memberId, draft)
     setError(message)
     if (!message) {
-      setDraft("")
+      closeSolutions()
     }
   }
 
@@ -125,7 +119,9 @@ export function CrewWorkOrdersPage() {
             header: "Status",
             width: "w-32",
             value: (order) => WORK_ORDER_STATUS_LABELS[order.status],
-            cell: (order) => <WorkOrderStatusBadge status={order.status} />,
+            cell: (order) => (
+              <Badge variant={order.status}>{WORK_ORDER_STATUS_LABELS[order.status]}</Badge>
+            ),
           },
           {
             header: "Actions",
@@ -135,15 +131,34 @@ export function CrewWorkOrdersPage() {
               <DataTableActions
                 inline
                 actions={[
-                  { label: "History", onClick: () => setHistoryId(order.id) },
+                  { label: "View", onClick: () => openView(order) },
                   ...(solutionSubmitBlock(order)
                     ? []
-                    : [{ label: "Send solution", onClick: () => openSolutions(order) }]),
+                    : [{ label: "Resolve", onClick: () => openSolutions(order) }]),
                 ]}
               />
             ),
           },
         ]}
+      />
+      <WorkOrderDialog
+        open={viewing !== null}
+        order={viewing}
+        description={
+          viewing
+            ? `${viewing.code} · ${
+                directory.vessels.find((vessel) => vessel.id === viewing.vesselId)?.name ?? ""
+              }`
+            : "Work order details."
+        }
+        readOnly
+        showStatus
+        showSolution
+        onOpenChange={(next) => {
+          if (!next) {
+            closeView()
+          }
+        }}
       />
       <Dialog
         open={selected !== null}
@@ -155,58 +170,67 @@ export function CrewWorkOrdersPage() {
       >
         <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{selected ? `Send solution for ${selected.code}` : "Send solution"}</DialogTitle>
+            <DialogTitle>
+              {selected ? `Send solution for ${selected.code}` : "Send solution"}
+            </DialogTitle>
             <DialogDescription>
               Send one solution. You can send another after this one is rejected.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3">
-            {selected && !submitBlock ? (
-              <form
-                id="crew-solution-form"
-                className="flex flex-col gap-1"
-                onSubmit={send}
-              >
-                <Label htmlFor="crew-solution">Solution</Label>
-                <Textarea
-                  id="crew-solution"
-                  value={draft}
-                  onChange={(event) => {
-                    setDraft(event.target.value)
-                    setError(null)
-                  }}
-                />
-              </form>
-            ) : null}
-            {error ? (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            ) : null}
-          </div>
+          {selected ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="crew-solution">Solution</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label="Solution history"
+                    onClick={() => setHistoryId(selected.id)}
+                  >
+                    <HistoryIcon />
+                  </Button>
+                </div>
+                <form id="crew-solution-form" onSubmit={send}>
+                  <Textarea
+                    id="crew-solution"
+                    value={draft}
+                    onChange={(event) => {
+                      setDraft(event.target.value)
+                      setError(null)
+                    }}
+                  />
+                </form>
+              </div>
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeSolutions}>
               Close
             </Button>
-            {selected && !submitBlock ? (
-              <Button type="submit" form="crew-solution-form">
-                Send solution
-              </Button>
-            ) : null}
+            <Button type="submit" form="crew-solution-form">
+              Send solution
+            </Button>
           </DialogFooter>
+          <SolutionHistoryDialog
+            code={history?.code ?? ""}
+            title={history?.title ?? ""}
+            solutions={history?.solutions ?? []}
+            open={selected !== null && history?.id === selected.id}
+            onOpenChange={(next) => {
+              if (!next) {
+                setHistoryId(null)
+              }
+            }}
+          />
         </DialogContent>
       </Dialog>
-      <SolutionHistoryDialog
-        code={history?.code ?? ""}
-        title={history?.title ?? ""}
-        solutions={history?.solutions ?? []}
-        open={history !== null}
-        onOpenChange={(next) => {
-          if (!next) {
-            setHistoryId(null)
-          }
-        }}
-      />
     </section>
   )
 }
@@ -251,7 +275,11 @@ export function CrewVesselsPage() {
             header: "Status",
             width: "w-32",
             value: (vessel) => (vessel.active ? "Active" : "Inactive"),
-            cell: (vessel) => <RecordStatus active={vessel.active} />,
+            cell: (vessel) => (
+              <Badge variant={vessel.active ? "active" : "inactive"}>
+                {vessel.active ? "Active" : "Inactive"}
+              </Badge>
+            ),
           },
         ]}
       />

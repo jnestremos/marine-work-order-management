@@ -9,11 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  SOLUTION_STATUS_LABELS,
-  type SolutionStatus,
-  type WorkOrderSolution,
-} from "@/lib/work-orders/types"
+import { SOLUTION_STATUS_LABELS, type WorkOrderSolution } from "@/lib/work-orders/types"
 
 function formatPostedAt(iso: string) {
   const date = new Date(iso)
@@ -24,23 +20,6 @@ function formatPostedAt(iso: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date)
-}
-
-const statusClassName: Record<SolutionStatus, string | undefined> = {
-  pending: undefined,
-  accepted: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-}
-
-function SolutionStatusBadge({ status }: { status: SolutionStatus }) {
-  if (status === "pending") {
-    return <Badge variant="warning">{SOLUTION_STATUS_LABELS[status]}</Badge>
-  }
-  return (
-    <Badge variant="secondary" className={statusClassName[status]}>
-      {SOLUTION_STATUS_LABELS[status]}
-    </Badge>
-  )
 }
 
 export function SolutionHistory({ solutions }: { solutions: WorkOrderSolution[] }) {
@@ -71,7 +50,9 @@ export function SolutionHistory({ solutions }: { solutions: WorkOrderSolution[] 
             header: "Status",
             width: "w-32",
             value: (solution) => SOLUTION_STATUS_LABELS[solution.status],
-            cell: (solution) => <SolutionStatusBadge status={solution.status} />,
+            cell: (solution) => (
+              <Badge variant={solution.status}>{SOLUTION_STATUS_LABELS[solution.status]}</Badge>
+            ),
           },
         ]}
       />

@@ -1,62 +1,23 @@
 "use client"
 
 import { useState } from "react"
-import { HistoryIcon } from "lucide-react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Controller, useForm } from "react-hook-form"
 import { DataTable, DataTableActions, type DataTableAction } from "@/components/admin/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { SolutionHistoryDialog } from "@/components/work-orders/SolutionHistory"
+import { WorkOrderDialog } from "@/components/work-orders/WorkOrderDialog"
 import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
-import { latestSolution } from "@/lib/work-orders/solutions"
 import { marineFixture } from "@/lib/fixtures/marine"
-import { workOrderFormSchema, type WorkOrderFormValues } from "@/lib/work-orders/schema"
+import type { WorkOrderFormValues } from "@/lib/work-orders/schema"
 import {
   captainVessels,
   eligibleCrew,
   workOrdersForCaptain,
 } from "@/lib/work-orders/rules"
-import { WORK_ORDER_STATUS_LABELS, type WorkOrder, type WorkOrderStatus } from "@/lib/work-orders/types"
+import { WORK_ORDER_STATUS_LABELS, type WorkOrder } from "@/lib/work-orders/types"
 import { useSessionStore } from "@/lib/session/store"
 import { memberName } from "@/lib/session/types"
-
-const statusClassName: Partial<Record<WorkOrderStatus, string>> = {
-  accepted: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-}
-
-function WorkOrderStatusBadge({ status }: { status: WorkOrderStatus }) {
-  return (
-    <Badge variant="secondary" className={statusClassName[status]}>
-      {WORK_ORDER_STATUS_LABELS[status]}
-    </Badge>
-  )
-}
-
-const emptyWorkOrderForm: WorkOrderFormValues = {
-  title: "",
-  issue: "",
-  assigneeId: "",
-}
 
 export function CaptainWorkspace() {
   const memberId = useSessionStore((state) => state.memberId)
@@ -107,53 +68,34 @@ function VesselOrders({
   onUpdate: (id: string, input: { title: string; issue: string; assigneeId: string }) => string | null
   onReview: (id: string, status: "accepted" | "rejected") => void
 }) {
-  const crew = eligibleCrew(marineFixture, vesselId)
-  const crewItems = Object.fromEntries(crew.map((member) => [member.id, memberName(member)]))
+  const crew = eligibleCrew(marineFixture, vesselId).map((member) => ({
+    id: member.id,
+    name: memberName(member),
+  }))
   const [open, setOpen] = useState(false)
+  const [formKey, setFormKey] = useState(0)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [historyId, setHistoryId] = useState<string | null>(null)
   const editing = orders.find((order) => order.id === editingId) ?? null
-  const history = orders.find((order) => order.id === historyId) ?? null
   const crewLocked = editing?.status === "done"
   const [query, setQuery] = useState("")
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
     ? orders.filter((order) => order.title.toLowerCase().includes(normalizedQuery))
     : orders
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    setError,
-    clearErrors,
-    formState: { errors },
-  } = useForm<WorkOrderFormValues>({
-    resolver: zodResolver(workOrderFormSchema),
-    defaultValues: emptyWorkOrderForm,
-  })
 
   function closeModal() {
     setOpen(false)
     setEditingId(null)
-    setHistoryId(null)
-    reset(emptyWorkOrderForm)
-    clearErrors()
   }
 
   function openEdit(order: WorkOrder) {
     setEditingId(order.id)
-    reset({
-      title: order.title,
-      issue: order.issue,
-      assigneeId: order.assigneeId,
-    })
-    clearErrors()
+    setFormKey((value) => value + 1)
     setOpen(true)
   }
 
-  function onValid(values: WorkOrderFormValues) {
-    const message = editing
+  function submitWorkOrder(values: WorkOrderFormValues) {
+    return editing
       ? onUpdate(editing.id, {
           ...values,
           assigneeId: crewLocked ? editing.assigneeId : values.assigneeId,
@@ -165,19 +107,6 @@ function VesselOrders({
           assigneeId: values.assigneeId,
           createdById: captainId,
         })
-    if (message) {
-      setError("root", { message })
-      return
-    }
-    closeModal()
-  }
-
-  function onInvalid() {
-    clearErrors("root")
-    if (crew.length === 0) {
-      clearErrors("assigneeId")
-      setError("root", { message: "This vessel has no active crew" })
-    }
   }
 
   return (
@@ -194,8 +123,7 @@ function VesselOrders({
           className="md:order-last"
           onClick={() => {
             setEditingId(null)
-            reset(emptyWorkOrderForm)
-            clearErrors()
+            setFormKey((value) => value + 1)
             setOpen(true)
           }}
         >
@@ -252,7 +180,9 @@ function VesselOrders({
             header: "Status",
             width: "w-32",
             value: (order) => WORK_ORDER_STATUS_LABELS[order.status],
-            cell: (order) => <WorkOrderStatusBadge status={order.status} />,
+            cell: (order) => (
+              <Badge variant={order.status}>{WORK_ORDER_STATUS_LABELS[order.status]}</Badge>
+            ),
           },
           {
             header: "Actions",
@@ -281,134 +211,29 @@ function VesselOrders({
           },
         ]}
       />
-      <Dialog
+      <WorkOrderDialog
+        key={formKey}
         open={open}
+        order={editing}
+        description={
+          crewLocked
+            ? "Update the title and issue. The assigned crew member stays as it is."
+            : editing
+              ? "Update the title, issue, and crew member."
+              : "Enter a title, an issue, and a crew member."
+        }
+        showCrew
+        showSolution={crewLocked}
+        crew={crew}
+        crewLocked={crewLocked}
+        submitLabel={editing ? "Save work order" : "Add work order"}
+        onSubmit={submitWorkOrder}
         onOpenChange={(next) => {
           if (!next) {
             closeModal()
-            return
           }
-          setOpen(true)
         }}
-      >
-        <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "View work order" : "Add work order"}</DialogTitle>
-            <DialogDescription>
-              {crewLocked
-                ? "Update the title and issue. The assigned crew member stays as it is."
-                : editing
-                  ? "Update the title, issue, and crew member."
-                  : "Enter a title, an issue, and a crew member."}
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            id="work-order-form"
-            onSubmit={handleSubmit(onValid, onInvalid)}
-            className="flex flex-col gap-3"
-          >
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="work-order-title">Title</Label>
-              <Input
-                id="work-order-title"
-                aria-invalid={errors.title !== undefined}
-                {...register("title")}
-              />
-              {errors.title ? (
-                <p className="text-sm text-destructive">{errors.title.message}</p>
-              ) : null}
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="work-order-issue">Issue</Label>
-              <Textarea
-                id="work-order-issue"
-                aria-invalid={errors.issue !== undefined}
-                {...register("issue")}
-              />
-              {errors.issue ? (
-                <p className="text-sm text-destructive">{errors.issue.message}</p>
-              ) : null}
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="work-order-crew">Crew</Label>
-              <Controller
-                name="assigneeId"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    items={crewItems}
-                    value={field.value ? field.value : null}
-                    disabled={crewLocked}
-                    onValueChange={(value) => {
-                      if (crewLocked || value === null) {
-                        return
-                      }
-                      field.onChange(value)
-                    }}
-                  >
-                    <SelectTrigger id="work-order-crew" className="w-full" disabled={crewLocked}>
-                      <SelectValue placeholder="Select a crew member" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {crew.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                          {memberName(member)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.assigneeId ? (
-                <p className="text-sm text-destructive">{errors.assigneeId.message}</p>
-              ) : null}
-            </div>
-            {editing && crewLocked ? (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="work-order-solution">Solution</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    aria-label="Solution history"
-                    onClick={() => setHistoryId(editing.id)}
-                  >
-                    <HistoryIcon />
-                  </Button>
-                </div>
-                <Textarea
-                  id="work-order-solution"
-                  value={latestSolution(editing)?.text ?? ""}
-                  disabled
-                />
-              </div>
-            ) : null}
-            {errors.root?.message ? (
-              <p role="alert" className="text-sm text-destructive">
-                {errors.root.message}
-              </p>
-            ) : null}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeModal}>
-                Cancel
-              </Button>
-              <Button type="submit">{editingId ? "Save work order" : "Add work order"}</Button>
-            </DialogFooter>
-          </form>
-          <SolutionHistoryDialog
-            code={history?.code ?? ""}
-            title={history?.title ?? ""}
-            solutions={history?.solutions ?? []}
-            open={history !== null}
-            onOpenChange={(next) => {
-              if (!next) {
-                setHistoryId(null)
-              }
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      />
     </section>
   )
 }

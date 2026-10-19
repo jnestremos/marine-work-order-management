@@ -2,7 +2,7 @@
 
 import { CaptainWorkspace } from "@/components/captain/CaptainWorkspace"
 import { DataTable } from "@/components/admin/DataTable"
-import { RecordStatus } from "@/components/admin/RecordStatus"
+import { Badge } from "@/components/ui/badge"
 import { EmptyRole } from "@/components/views/EmptyRole"
 import { useSessionStore } from "@/lib/session/store"
 import { memberName } from "@/lib/session/types"
@@ -69,7 +69,11 @@ export function CaptainCrewPage() {
             header: "Status",
             width: "w-32",
             value: (item) => (item.active ? "Active" : "Inactive"),
-            cell: (item) => <RecordStatus active={item.active} />,
+            cell: (item) => (
+              <Badge variant={item.active ? "active" : "inactive"}>
+                {item.active ? "Active" : "Inactive"}
+              </Badge>
+            ),
           },
         ]}
       />

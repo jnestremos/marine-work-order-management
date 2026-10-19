@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { DataTable, DataTableActions } from "@/components/admin/DataTable"
-import { RecordStatus } from "@/components/admin/RecordStatus"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -191,7 +191,11 @@ export function VesselsSection({
             header: "Status",
             width: "w-32",
             value: (vessel) => (vessel.active ? "Active" : "Inactive"),
-            cell: (vessel) => <RecordStatus active={vessel.active} />,
+            cell: (vessel) => (
+              <Badge variant={vessel.active ? "active" : "inactive"}>
+                {vessel.active ? "Active" : "Inactive"}
+              </Badge>
+            ),
           },
           {
             header: "Actions",

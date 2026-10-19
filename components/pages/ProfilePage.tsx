@@ -1,7 +1,7 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
 import { EmptyRole } from "@/components/views/EmptyRole"
-import { RecordStatus } from "@/components/admin/RecordStatus"
 import { useSessionStore } from "@/lib/session/store"
 import { memberName, ROLE_LABELS } from "@/lib/session/types"
 
@@ -39,7 +39,9 @@ export function ProfilePage() {
         <div>
           <dt className="text-sm text-muted-foreground">Status</dt>
           <dd className="mt-1">
-            <RecordStatus active={member.active} />
+            <Badge variant={member.active ? "active" : "inactive"}>
+              {member.active ? "Active" : "Inactive"}
+            </Badge>
           </dd>
         </div>
         {member.role === "admin" ? null : (

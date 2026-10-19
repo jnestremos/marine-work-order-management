@@ -7,7 +7,7 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DataTable, DataTableActions } from "@/components/admin/DataTable";
 import { MemberRecordTables } from "@/components/admin/MemberRecordTables";
 import { SeaServiceSection } from "@/components/records/SeaServiceSection";
-import { RecordStatus } from "@/components/admin/RecordStatus";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -211,7 +211,11 @@ export function UsersSection({
 						header: "Status",
 						width: "w-32",
 						value: (member) => (member.active ? "Active" : "Inactive"),
-						cell: (member) => <RecordStatus active={member.active} />,
+						cell: (member) => (
+							<Badge variant={member.active ? "active" : "inactive"}>
+								{member.active ? "Active" : "Inactive"}
+							</Badge>
+						),
 					},
 					{
 						header: "Actions",

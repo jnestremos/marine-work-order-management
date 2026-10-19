@@ -52,24 +52,8 @@ const emptyVoyage: SeaServiceFormValues = {
 
 const roleItems = Object.fromEntries(ROLES.map((role) => [role, ROLE_LABELS[role]]))
 
-const statusClassName: Record<Exclude<SeaServiceStatus, "pending">, string> = {
-  accepted: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-}
-
 function vesselName(vessels: Vessel[], vesselId: string) {
   return vessels.find((vessel) => vessel.id === vesselId)?.name ?? ""
-}
-
-function SeaServiceStatusBadge({ status }: { status: SeaServiceStatus }) {
-  if (status === "pending") {
-    return <Badge variant="warning">{SEA_SERVICE_STATUS_LABELS[status]}</Badge>
-  }
-  return (
-    <Badge variant="secondary" className={statusClassName[status]}>
-      {SEA_SERVICE_STATUS_LABELS[status]}
-    </Badge>
-  )
 }
 
 export function SeaServiceSection({
@@ -349,7 +333,9 @@ export function SeaServiceSection({
             header: "Status",
             width: "w-32",
             value: (record) => SEA_SERVICE_STATUS_LABELS[record.status],
-            cell: (record) => <SeaServiceStatusBadge status={record.status} />,
+            cell: (record) => (
+              <Badge variant={record.status}>{SEA_SERVICE_STATUS_LABELS[record.status]}</Badge>
+            ),
           },
           {
             header: "Actions",
