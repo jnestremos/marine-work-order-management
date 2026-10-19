@@ -219,10 +219,13 @@ describe("assignment: browser Supabase client", () => {
       path.join(root, "components/admin/DataTable.tsx"),
       "utf8",
     )
+    expect(dataTable).toMatch(/w-full border-separate/)
     expect(dataTable).toMatch(/min-w-max/)
     expect(dataTable).toMatch(/function columnWidthClass/)
     expect(dataTable).not.toMatch(/columnMinWidth/)
     expect(dataTable).toMatch(/Avoid fixed `w-\*`/)
+    // Content-sized tables leave empty space on wide layouts.
+    expect(dataTable).not.toMatch(/className=\{cn\("w-max/)
   })
 
   it("keeps solution history tables wide enough to render inside work orders", () => {
@@ -308,7 +311,7 @@ describe("assignment: documentation deliverables", () => {
     expect(schema).toMatch(/assignments_before_delete/)
     expect(schema).toMatch(/service_records_after_update/)
     expect(schema).toMatch(/unresolved_codes_for_assignment/)
-    expect(schema).toMatch(/status in \('open', 'in_progress', 'done'\)/)
+    expect(schema).toMatch(/status in \('open', 'in_progress', 'done', 'rejected'\)/)
     expect(schema).toMatch(/Close or approve % before removing this assignment/)
     expect(schema).toMatch(/Close or approve % before deactivating %/)
     expect(schema).toMatch(/service_records_end_on_or_after_start/)

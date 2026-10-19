@@ -325,7 +325,7 @@ export function DataTable<Row>({
 
   return (
     <Table
-      className={cn("w-max border-separate border-spacing-0", minWidth)}
+      className={cn("w-full border-separate border-spacing-0", minWidth)}
       containerClassName={containerClassName}
     >
       <TableHeader className="sticky top-0 z-10 bg-card [&_th]:border-b [&_th]:bg-card">

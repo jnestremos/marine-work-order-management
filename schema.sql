@@ -264,7 +264,7 @@ as $$
     array(
       select wo.code
       from public.work_orders wo
-      where wo.status in ('open', 'in_progress', 'done')
+      where wo.status in ('open', 'in_progress', 'done', 'rejected')
         and (
           (p_member_id is not null and (wo.assignee_id = p_member_id or wo.created_by_id = p_member_id))
           or (p_vessel_id is not null and wo.vessel_id = p_vessel_id)
@@ -276,7 +276,7 @@ as $$
 $$;
 
 comment on function private.unresolved_codes(uuid, uuid) is
-  'Work-order codes that block member/vessel deactivation: open, in_progress, or done (awaiting Attest/Reject).';
+  'Work-order codes that block member/vessel deactivation: open, in_progress, done (awaiting Attest/Reject), or rejected (needs another solution).';
 
 create function private.next_work_order_code()
 returns text
@@ -541,7 +541,7 @@ as $$
       select wo.code
       from public.work_orders wo
       where wo.vessel_id = p_vessel_id
-        and wo.status in ('open', 'in_progress', 'done')
+        and wo.status in ('open', 'in_progress', 'done', 'rejected')
         and (wo.assignee_id = p_member_id or wo.created_by_id = p_member_id)
       order by substring(wo.code from '^WO-([0-9]+)$')::bigint
     ),
@@ -550,7 +550,7 @@ as $$
 $$;
 
 comment on function private.unresolved_codes_for_assignment(uuid, uuid) is
-  'Work-order codes that block unassign: open, in_progress, or done (awaiting captain Attest/Reject) for that member on the vessel.';
+  'Work-order codes that block unassign: open, in_progress, done (awaiting Attest/Reject), or rejected (needs another solution) for that member on the vessel.';
 
 create function private.assignments_before_delete()
 returns trigger
