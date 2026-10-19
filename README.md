@@ -2,7 +2,7 @@
 
 Mini dashboard for vessel-scoped work orders, crew management, and multi-role operations.
 
-Built with **Next.js** (App Router), **TypeScript**, **Tailwind / shadcn**, and **Supabase** (browser client for reads and mutations, with Postgres triggers and RLS for business rules).
+Built with **Next.js** (App Router), **TypeScript**, **Tailwind / shadcn**, **TanStack Query**, and **Supabase** (browser client for reads and mutations, with Postgres triggers and RLS for business rules).
 
 ## Submission
 
@@ -19,6 +19,7 @@ Built with **Next.js** (App Router), **TypeScript**, **Tailwind / shadcn**, and 
 2. **Admin dashboard** — users, vessels, and vessel assignments with validation; duplicate names and unsafe deactivations are blocked in Postgres.
 3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason.
 4. **Browser Supabase client** — `lib/supabase/client.ts` + `lib/supabase/api.ts` load and mutate data; domain rules live in migrations under `supabase/migrations/`.
+5. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys. The session bar uses a lightweight `session_choices` RPC.
 
 ## Specification checks
 

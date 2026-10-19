@@ -30,7 +30,13 @@ import {
   seaServiceFormSchema,
   type SeaServiceFormValues,
 } from "@/lib/records/schema"
-import { useMarine } from "@/components/data/MarineProvider"
+import { QueryState } from "@/components/data/QueryState"
+import { useMarineMutations } from "@/components/data/marine-mutations"
+import {
+  useMembersQuery,
+  useSeaServicesQuery,
+  useVesselsQuery,
+} from "@/components/data/marine-queries"
 import { useSessionStore } from "@/lib/session/store"
 import {
   memberName,
@@ -66,15 +72,20 @@ export function SeaServiceSection({
   memberId?: string
   embedded?: boolean
 }) {
-  const marine = useMarine()
-  const directory = marine
+  const membersQuery = useMembersQuery()
+  const vesselsQuery = useVesselsQuery()
+  const seaServicesQuery = useSeaServicesQuery()
+  const mutations = useMarineMutations()
+  const members = membersQuery.data ?? []
+  const vessels = vesselsQuery.data ?? []
+  const seaServices = seaServicesQuery.data ?? []
   const sessionMemberId = useSessionStore((state) => state.memberId)
-  const member = directory.members.find((item) => item.id === sessionMemberId) ?? null
+  const member = members.find((item) => item.id === sessionMemberId) ?? null
   const showUser = scope === "directory" && !fixedMemberId
-  const people = directory.members.filter((item) => item.role !== "admin")
+  const people = members.filter((item) => item.role !== "admin")
   const memberItems = Object.fromEntries(people.map((item) => [item.id, memberName(item)]))
-  const vesselItems = Object.fromEntries(directory.vessels.map((vessel) => [vessel.id, vessel.name]))
-  const records = directory.seaServices
+  const vesselItems = Object.fromEntries(vessels.map((vessel) => [vessel.id, vessel.name]))
+  const records = seaServices
     .filter((record) => {
       if (fixedMemberId) {
         return record.memberId === fixedMemberId
@@ -100,8 +111,8 @@ export function SeaServiceSection({
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
     ? records.filter((record) => {
-        const owner = directory.members.find((item) => item.id === record.memberId)
-        const name = vesselName(directory.vessels, record.vesselId).toLowerCase()
+        const owner = members.find((item) => item.id === record.memberId)
+        const name = vesselName(vessels, record.vesselId).toLowerCase()
         return (
           name.includes(normalizedQuery) ||
           ROLE_LABELS[record.role].toLowerCase().includes(normalizedQuery) ||
@@ -124,7 +135,7 @@ export function SeaServiceSection({
 
   function openAdd() {
     const fixedMember = fixedMemberId
-      ? directory.members.find((item) => item.id === fixedMemberId)
+      ? members.find((item) => item.id === fixedMemberId)
       : null
     setEditing(null)
     setOwnerId(fixedMemberId ?? "")
@@ -160,16 +171,16 @@ export function SeaServiceSection({
 
   async function save(values: SeaServiceFormValues) {
     const nextOwnerId = fixedMemberId ?? (scope === "directory" ? ownerId : member?.id)
-    const owner = directory.members.find((item) => item.id === nextOwnerId)
+    const owner = members.find((item) => item.id === nextOwnerId)
     if (!owner || owner.role === "admin") {
       setOwnerError("Choose a captain or crew member")
       return
     }
-    if (!directory.vessels.some((vessel) => vessel.id === values.vesselId)) {
+    if (!vessels.some((vessel) => vessel.id === values.vesselId)) {
       form.setError("root", { message: "Vessel is required" })
       return
     }
-    const message = await marine.saveSeaService({
+    const message = await mutations.saveSeaService({
       id: editing?.id,
       memberId: owner.id,
       vesselId: values.vesselId,
@@ -188,20 +199,24 @@ export function SeaServiceSection({
   }
 
   function setStatus(record: SeaService, status: SeaServiceStatus) {
-    void marine.setSeaServiceStatus(record.id, status)
+    void mutations.setSeaServiceStatus(record.id, status)
   }
 
   function remove(record: SeaService) {
-    void marine.removeSeaService(record.id)
-  }
-
-  if (!embedded && scope === "member" && !member) {
-    return <EmptyRole />
+    void mutations.removeSeaService(record.id)
   }
 
   const voyageCount = `${records.length} ${records.length === 1 ? "voyage" : "voyages"}`
+  const isLoading =
+    membersQuery.isLoading || vesselsQuery.isLoading || seaServicesQuery.isLoading
+  const queryError = membersQuery.error ?? vesselsQuery.error ?? seaServicesQuery.error
+
+  if (!embedded && scope === "member" && !isLoading && !member) {
+    return <EmptyRole />
+  }
 
   return (
+    <QueryState isLoading={isLoading} error={queryError}>
     <section
       className={
         embedded
@@ -265,11 +280,11 @@ export function SeaServiceSection({
                   header: "User",
                   cellClassName: "font-medium",
                   value: (record: SeaService) => {
-                    const owner = directory.members.find((item) => item.id === record.memberId)
+                    const owner = members.find((item) => item.id === record.memberId)
                     return owner ? memberName(owner) : ""
                   },
                   cell: (record: SeaService) => {
-                    const owner = directory.members.find((item) => item.id === record.memberId)
+                    const owner = members.find((item) => item.id === record.memberId)
                     return owner ? memberName(owner) : ""
                   },
                 },
@@ -278,8 +293,8 @@ export function SeaServiceSection({
           {
             header: "Vessel",
             cellClassName: showUser ? undefined : "font-medium",
-            value: (record) => vesselName(directory.vessels, record.vesselId),
-            cell: (record) => vesselName(directory.vessels, record.vesselId),
+            value: (record) => vesselName(vessels, record.vesselId),
+            cell: (record) => vesselName(vessels, record.vesselId),
           },
           {
             header: "Role",
@@ -322,7 +337,7 @@ export function SeaServiceSection({
             width: "w-64",
             align: "center",
             cell: (record) => {
-              const name = vesselName(directory.vessels, record.vesselId) || "this vessel"
+              const name = vesselName(vessels, record.vesselId) || "this vessel"
               const removeAction: DataTableAction = {
                 label: "Remove",
                 variant: "destructive",
@@ -434,7 +449,7 @@ export function SeaServiceSection({
                       <SelectValue placeholder="Select a vessel" />
                     </SelectTrigger>
                     <SelectContent>
-                      {directory.vessels.map((vessel) => (
+                      {vessels.map((vessel) => (
                         <SelectItem key={vessel.id} value={vessel.id}>
                           {vessel.name}
                         </SelectItem>
@@ -564,5 +579,6 @@ export function SeaServiceSection({
         }}
       />
     </section>
+    </QueryState>
   )
 }

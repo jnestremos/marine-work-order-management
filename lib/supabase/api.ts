@@ -148,46 +148,59 @@ export async function loadSessionChoices(): Promise<MarineFixture> {
   }
 }
 
-export async function loadMarineData(): Promise<{
-  members: Member[]
-  vessels: Vessel[]
-  assignments: Assignment[]
-  serviceRecords: ServiceRecord[]
-  seaServices: SeaService[]
-  orders: WorkOrder[]
-}> {
-  const [members, vessels, assignments, serviceRecords, seaServices, orders] = await Promise.all([
-    supabase.from("members").select("id, first_name, last_name, role, active"),
-    supabase.from("vessels").select("id, name, active"),
-    supabase.from("assignments").select("member_id, vessel_id"),
-    supabase.from("service_records").select("id, member_id, vessel_id, role, start_date, end_date"),
-    supabase
+async function requireRows<T>(result: { data: T[] | null; error: { message: string } | null }) {
+  if (result.error) {
+    throw new Error(result.error.message)
+  }
+  return result.data ?? []
+}
+
+export async function loadMembers(): Promise<Member[]> {
+  const rows = await requireRows(
+    await supabase.from("members").select("id, first_name, last_name, role, active"),
+  )
+  return (rows as MemberRow[]).map(toMember)
+}
+
+export async function loadVessels(): Promise<Vessel[]> {
+  const rows = await requireRows(await supabase.from("vessels").select("id, name, active"))
+  return (rows as VesselRow[]).map(toVessel)
+}
+
+export async function loadAssignments(): Promise<Assignment[]> {
+  const rows = await requireRows(
+    await supabase.from("assignments").select("member_id, vessel_id"),
+  )
+  return (rows as AssignmentRow[]).map(toAssignment)
+}
+
+export async function loadServiceRecords(): Promise<ServiceRecord[]> {
+  const rows = await requireRows(
+    await supabase
+      .from("service_records")
+      .select("id, member_id, vessel_id, role, start_date, end_date"),
+  )
+  return (rows as ServiceRow[]).map(toService)
+}
+
+export async function loadSeaServices(): Promise<SeaService[]> {
+  const rows = await requireRows(
+    await supabase
       .from("sea_services")
       .select(
         "id, member_id, vessel_id, role, sign_on_date, sign_on_port, sign_off_date, sign_off_port, status",
       ),
-    supabase.from("work_orders").select(
+  )
+  return (rows as SeaRow[]).map(toSea)
+}
+
+export async function loadWorkOrders(): Promise<WorkOrder[]> {
+  const rows = await requireRows(
+    await supabase.from("work_orders").select(
       "id, code, vessel_id, title, issue, status, assignee_id, created_by_id, work_order_solutions(id, body, status, posted_at, review_note)",
     ),
-  ])
-  const error =
-    members.error ??
-    vessels.error ??
-    assignments.error ??
-    serviceRecords.error ??
-    seaServices.error ??
-    orders.error
-  if (error) {
-    throw new Error(error.message)
-  }
-  return {
-    members: ((members.data ?? []) as MemberRow[]).map(toMember),
-    vessels: ((vessels.data ?? []) as VesselRow[]).map(toVessel),
-    assignments: ((assignments.data ?? []) as AssignmentRow[]).map(toAssignment),
-    serviceRecords: ((serviceRecords.data ?? []) as ServiceRow[]).map(toService),
-    seaServices: ((seaServices.data ?? []) as SeaRow[]).map(toSea),
-    orders: ((orders.data ?? []) as OrderRow[]).map(toOrder),
-  }
+  )
+  return (rows as OrderRow[]).map(toOrder)
 }
 
 export async function saveUser(input: {

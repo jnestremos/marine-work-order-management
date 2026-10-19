@@ -1,45 +1,57 @@
 "use client"
 
 import { AssignmentsSection } from "@/components/admin/AssignmentsSection"
-import { useAdminDirectory } from "@/components/admin/useAdminDirectory"
+import {
+  AdminQueryGate,
+  useAdminAssignmentsData,
+  useAdminUsersData,
+  useAdminVesselsData,
+} from "@/components/admin/useAdminDirectory"
 import { UsersSection } from "@/components/admin/UsersSection"
 import { VesselsSection } from "@/components/admin/VesselsSection"
+
 export function AdminUsersPage() {
-  const { directory, saveUser, setMemberActive } = useAdminDirectory()
+  const data = useAdminUsersData()
   return (
-    <UsersSection
-      members={directory.members}
-      vessels={directory.vessels}
-      serviceRecords={directory.serviceRecords}
-      onSave={saveUser}
-      onSetActive={setMemberActive}
-    />
+    <AdminQueryGate isLoading={data.isLoading} error={data.error}>
+      <UsersSection
+        members={data.members}
+        vessels={data.vessels}
+        serviceRecords={data.serviceRecords}
+        onSave={data.saveUser}
+        onSetActive={data.setMemberActive}
+      />
+    </AdminQueryGate>
   )
 }
 
 export function AdminVesselsPage() {
-  const { directory, saveVessel, setVesselActive, removeAssignment } = useAdminDirectory()
+  const data = useAdminVesselsData()
   return (
-    <VesselsSection
-      vessels={directory.vessels}
-      members={directory.members}
-      assignments={directory.assignments}
-      onSave={saveVessel}
-      onSetActive={setVesselActive}
-      onRemoveAssignment={removeAssignment}
-    />
+    <AdminQueryGate isLoading={data.isLoading} error={data.error}>
+      <VesselsSection
+        vessels={data.vessels}
+        members={data.members}
+        assignments={data.assignments}
+        onSave={data.saveVessel}
+        onSetActive={data.setVesselActive}
+        onRemoveAssignment={data.removeAssignment}
+      />
+    </AdminQueryGate>
   )
 }
 
 export function AdminAssignmentsPage() {
-  const { directory, addAssignment, removeAssignment } = useAdminDirectory()
+  const data = useAdminAssignmentsData()
   return (
-    <AssignmentsSection
-      members={directory.members}
-      vessels={directory.vessels}
-      assignments={directory.assignments}
-      onAdd={addAssignment}
-      onRemove={removeAssignment}
-    />
+    <AdminQueryGate isLoading={data.isLoading} error={data.error}>
+      <AssignmentsSection
+        members={data.members}
+        vessels={data.vessels}
+        assignments={data.assignments}
+        onAdd={data.addAssignment}
+        onRemove={data.removeAssignment}
+      />
+    </AdminQueryGate>
   )
 }

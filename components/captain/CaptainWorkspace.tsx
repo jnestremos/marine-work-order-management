@@ -15,38 +15,53 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useMarine } from "@/components/data/MarineProvider"
+import { QueryState } from "@/components/data/QueryState"
+import { useMarineMutations } from "@/components/data/marine-mutations"
+import {
+  useMembersQuery,
+  useVesselsQuery,
+  useWorkOrdersQuery,
+} from "@/components/data/marine-queries"
 import { WorkOrderDialog } from "@/components/work-orders/WorkOrderDialog"
 import type { WorkOrderFormValues } from "@/lib/work-orders/schema"
 import { WORK_ORDER_STATUS_LABELS, type WorkOrder } from "@/lib/work-orders/types"
 import { useSessionStore } from "@/lib/session/store"
-import { memberName } from "@/lib/session/types"
+import { memberName, type Member } from "@/lib/session/types"
 
 export function CaptainWorkspace() {
   const memberId = useSessionStore((state) => state.memberId)
   const sessionVesselId = useSessionStore((state) => state.vesselId)
-  const marine = useMarine()
-  const vessels = marine.vessels.filter((vessel) => vessel.active)
+  const vesselsQuery = useVesselsQuery()
+  const membersQuery = useMembersQuery()
+  const ordersQuery = useWorkOrdersQuery()
+  const mutations = useMarineMutations()
+  const vessels = (vesselsQuery.data ?? []).filter((vessel) => vessel.active)
   const selected = vessels.find((vessel) => vessel.id === sessionVesselId) ?? vessels[0] ?? null
-  const orders = [...marine.orders].sort((left, right) =>
+  const orders = [...(ordersQuery.data ?? [])].sort((left, right) =>
     right.code.localeCompare(left.code, undefined, { numeric: true }),
   )
 
-  if (!selected) {
-    return <p className="text-sm text-muted-foreground">No vessel assigned.</p>
-  }
-
   return (
-    <VesselOrders
-      key={`${memberId ?? ""}:${selected.id}`}
-      vesselId={selected.id}
-      vesselName={selected.name}
-      captainId={memberId ?? ""}
-      orders={orders}
-      onCreate={marine.addWorkOrder}
-      onUpdate={marine.updateWorkOrder}
-      onReview={marine.reviewWorkOrder}
-    />
+    <QueryState
+      isLoading={vesselsQuery.isLoading || membersQuery.isLoading || ordersQuery.isLoading}
+      error={vesselsQuery.error ?? membersQuery.error ?? ordersQuery.error}
+    >
+      {!selected ? (
+        <p className="text-sm text-muted-foreground">No vessel assigned.</p>
+      ) : (
+        <VesselOrders
+          key={`${memberId ?? ""}:${selected.id}`}
+          vesselId={selected.id}
+          vesselName={selected.name}
+          captainId={memberId ?? ""}
+          members={membersQuery.data ?? []}
+          orders={orders}
+          onCreate={mutations.addWorkOrder}
+          onUpdate={mutations.updateWorkOrder}
+          onReview={mutations.reviewWorkOrder}
+        />
+      )}
+    </QueryState>
   )
 }
 
@@ -54,6 +69,7 @@ function VesselOrders({
   vesselId,
   vesselName,
   captainId,
+  members,
   orders,
   onCreate,
   onUpdate,
@@ -62,6 +78,7 @@ function VesselOrders({
   vesselId: string
   vesselName: string
   captainId: string
+  members: Member[]
   orders: WorkOrder[]
   onCreate: (input: {
     vesselId: string
@@ -80,8 +97,7 @@ function VesselOrders({
     note?: string,
   ) => Promise<string | null>
 }) {
-  const marine = useMarine()
-  const crew = marine.members
+  const crew = members
     .filter((member) => member.role === "crew" && member.active)
     .map((member) => ({
       id: member.id,
@@ -204,11 +220,11 @@ function VesselOrders({
             header: "Crew",
             width: "w-40",
             value: (order) => {
-              const member = marine.members.find((item) => item.id === order.assigneeId)
+              const member = members.find((item) => item.id === order.assigneeId)
               return member ? memberName(member) : ""
             },
             cell: (order) => {
-              const member = marine.members.find((item) => item.id === order.assigneeId)
+              const member = members.find((item) => item.id === order.assigneeId)
               return member ? memberName(member) : ""
             },
           },

@@ -190,6 +190,24 @@ describe("assignment: browser Supabase client", () => {
     expect(api).toMatch(/from\("members"\)/)
     expect(api).toMatch(/from\("work_order_solutions"\)/)
     expect(api).toMatch(/review_note/)
+    expect(api).toMatch(/export async function loadMembers/)
+    expect(api).toMatch(/export async function loadWorkOrders/)
+  })
+
+  it("fetches marine resources on demand with TanStack Query", () => {
+    const queries = readFileSync(
+      path.join(root, "components/data/marine-queries.ts"),
+      "utf8",
+    )
+    const provider = readFileSync(
+      path.join(root, "components/data/MarineProvider.tsx"),
+      "utf8",
+    )
+    expect(queries).toMatch(/@tanstack\/react-query/)
+    expect(queries).toMatch(/useWorkOrdersQuery/)
+    expect(queries).toMatch(/useMembersQuery/)
+    expect(provider).toMatch(/QueryClientProvider/)
+    expect(provider).not.toMatch(/loadMarineData/)
   })
 
   it("ships session bar dropdowns for vessel, role, and member", () => {
