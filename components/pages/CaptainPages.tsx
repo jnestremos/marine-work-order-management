@@ -46,7 +46,7 @@ export function CaptainCrewPage() {
   }
 
   return (
-    <section className="rounded-xl border bg-card">
+    <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
       <div className="border-b px-4 py-3">
         <h1 className="text-base font-semibold">Crew assignments</h1>
         <p className="text-sm text-muted-foreground">

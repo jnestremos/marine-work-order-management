@@ -74,7 +74,7 @@ export function buildWorkOrder(
       vesselId: input.vesselId,
       title: input.title.trim(),
       issue: input.issue.trim(),
-      solution: "",
+      solutions: [],
       status: "open",
       assigneeId: input.assigneeId,
       createdById: input.createdById,

@@ -242,7 +242,7 @@ export function SeaServiceSection({
       className={
         embedded
           ? "flex min-w-0 flex-col gap-2"
-          : "rounded-xl border bg-card"
+          : "min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto"
       }
     >
       {embedded ? (
@@ -258,7 +258,7 @@ export function SeaServiceSection({
           </Button>
         </div>
       ) : (
-        <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b px-4 py-3 md:flex md:items-center md:justify-between">
           <div>
             <h1 className="text-base font-semibold">Sea service history</h1>
             <p className="text-sm text-muted-foreground">
@@ -269,7 +269,10 @@ export function SeaServiceSection({
               }`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <Button type="button" className="md:order-last" onClick={openAdd}>
+            Add voyage
+          </Button>
+          <div className="col-span-2 md:col-auto">
             <Label htmlFor="sea-service-search" className="sr-only">
               Search
             </Label>
@@ -277,12 +280,9 @@ export function SeaServiceSection({
               id="sea-service-search"
               value={query}
               placeholder={showUser ? "Search name, vessel, or port" : "Search vessel, role, or port"}
-              className="w-64"
+              className="w-full md:w-64"
               onChange={(event) => setQuery(event.target.value)}
             />
-            <Button type="button" onClick={openAdd}>
-              Add voyage
-            </Button>
           </div>
         </div>
       )}

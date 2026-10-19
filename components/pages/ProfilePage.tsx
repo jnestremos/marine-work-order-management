@@ -23,7 +23,7 @@ export function ProfilePage() {
   })
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-card">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
         <h1 className="text-base font-semibold">Profile settings</h1>
       </div>

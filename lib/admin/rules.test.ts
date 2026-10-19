@@ -138,7 +138,7 @@ function order(partial: Pick<WorkOrder, "code" | "status" | "vesselId" | "assign
     id: partial.code,
     title: "Pump",
     issue: "Leak",
-    solution: "",
+    solutions: [],
     ...partial,
   }
 }
@@ -186,6 +186,39 @@ describe("memberWorkOrderBlock", () => {
         [orders[2]],
         "member_casey",
         "Casey Nguyen",
+      ),
+    ).toBeNull()
+  })
+
+  it("allows a member whose done order was accepted or rejected", () => {
+    expect(
+      memberWorkOrderBlock(
+        [
+          order({
+            code: "WO-1004",
+            status: "accepted",
+            vesselId: "vessel_horizon",
+            assigneeId: "member_ivan",
+            createdById: "member_blake",
+          }),
+        ],
+        "member_ivan",
+        "Ivan Brooks",
+      ),
+    ).toBeNull()
+    expect(
+      memberWorkOrderBlock(
+        [
+          order({
+            code: "WO-1004",
+            status: "rejected",
+            vesselId: "vessel_horizon",
+            assigneeId: "member_ivan",
+            createdById: "member_blake",
+          }),
+        ],
+        "member_blake",
+        "Blake Ortiz",
       ),
     ).toBeNull()
   })

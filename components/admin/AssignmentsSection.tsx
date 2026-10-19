@@ -108,8 +108,8 @@ export function AssignmentsSection({
   }
 
   return (
-    <section className="rounded-xl border bg-card">
-      <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
+    <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b px-4 py-3 md:flex md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold">Crew assignments</h2>
           <p className="text-sm text-muted-foreground">
@@ -117,7 +117,10 @@ export function AssignmentsSection({
             {assignments.length === 1 ? "assignment" : "assignments"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <Button type="button" className="md:order-last" onClick={openAdd}>
+          Add assignment
+        </Button>
+        <div className="col-span-2 md:col-auto">
           <Label htmlFor="assignment-search" className="sr-only">
             Search
           </Label>
@@ -125,12 +128,9 @@ export function AssignmentsSection({
             id="assignment-search"
             value={query}
             placeholder="Search first or last name"
-            className="w-56"
+            className="w-full md:w-56"
             onChange={(event) => setQuery(event.target.value)}
           />
-          <Button type="button" onClick={openAdd}>
-            Add assignment
-          </Button>
         </div>
       </div>
       {actionError ? (

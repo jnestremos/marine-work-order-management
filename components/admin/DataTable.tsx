@@ -54,10 +54,34 @@ export type DataTableAction = {
 export function DataTableActions({
   actions,
   fit = false,
+  inline = false,
 }: {
   actions: DataTableAction[]
   fit?: boolean
+  inline?: boolean
 }) {
+  if (inline) {
+    return (
+      <div className="flex flex-nowrap items-center justify-center gap-2">
+        {actions.map((action, index) => {
+          const Icon = actionIcons[action.label]
+          return (
+            <Button
+              key={`${action.label}-${index}`}
+              type="button"
+              variant={action.variant ?? "outline"}
+              size="sm"
+              onClick={action.onClick}
+            >
+              {Icon ? <Icon data-icon="inline-start" /> : null}
+              {action.label}
+            </Button>
+          )
+        })}
+      </div>
+    )
+  }
+
   const single = actions.length === 1
 
   return (
@@ -266,6 +290,14 @@ export function DataTable<Row>({
       return columnText(column, row).toLowerCase().includes(filter)
     }),
   )
+  const firstColumn = columns[0]
+  const firstColumnCh = firstColumn
+    ? Math.max(
+        firstColumn.header.length,
+        ...rows.map((row) => firstColumn.value?.(row)?.length ?? 0),
+      ) + 8
+    : 0
+
   if (sort) {
     const column = filterable.find((item) => item.header === sort.header)
     if (column) {
@@ -286,7 +318,7 @@ export function DataTable<Row>({
     >
       <TableHeader className="sticky top-0 z-10 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:border-b [&_th]:bg-card">
         <TableRow>
-          {columns.map((column) => (
+          {columns.map((column, index) => (
             <TableHead
               key={column.header}
               aria-sort={
@@ -298,9 +330,14 @@ export function DataTable<Row>({
                     : "none"
                   : undefined
               }
+              style={
+                index === 0
+                  ? { width: `${firstColumnCh}ch`, minWidth: `${firstColumnCh}ch` }
+                  : undefined
+              }
               className={cn(
-                "px-4",
-                column.width,
+                "px-4 whitespace-nowrap",
+                index === 0 ? undefined : column.width,
                 column.align === "center" && "text-center",
               )}
             >
@@ -347,12 +384,21 @@ export function DataTable<Row>({
               key={getRowKey(row)}
               data-state={isSelected?.(row) ? "selected" : undefined}
             >
-              {columns.map((column) => (
+              {columns.map((column, index) => (
                 <TableCell
                   key={column.header}
+                  style={
+                    index === 0
+                      ? { width: `${firstColumnCh}ch`, minWidth: `${firstColumnCh}ch` }
+                      : undefined
+                  }
                   className={cn(
                     "px-4",
-                    column.align === "center" ? "text-center" : "truncate",
+                    index === 0
+                      ? "whitespace-nowrap"
+                      : column.align === "center"
+                        ? "text-center"
+                        : "truncate",
                     column.cellClassName,
                   )}
                 >

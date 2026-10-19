@@ -1,5 +1,5 @@
 import { memberName, type MarineFixture, type Member } from "@/lib/session/types"
-import type { WorkOrder } from "@/lib/work-orders/types"
+import { workOrderIsUnresolved, type WorkOrder } from "@/lib/work-orders/types"
 
 export function duplicateName(
   records: readonly { id: string; name: string }[],
@@ -222,7 +222,7 @@ export function memberWorkOrderBlock(
 ): string | null {
   const pending = orders.filter(
     (order) =>
-      order.status !== "done" &&
+      workOrderIsUnresolved(order.status) &&
       (order.assigneeId === memberId || order.createdById === memberId),
   )
   const codes = unresolvedCodes(pending)
@@ -237,7 +237,9 @@ export function vesselWorkOrderBlock(
   vesselId: string,
   name: string,
 ): string | null {
-  const pending = orders.filter((order) => order.status !== "done" && order.vesselId === vesselId)
+  const pending = orders.filter(
+    (order) => workOrderIsUnresolved(order.status) && order.vesselId === vesselId,
+  )
   const codes = unresolvedCodes(pending)
   if (codes.length === 0) {
     return null

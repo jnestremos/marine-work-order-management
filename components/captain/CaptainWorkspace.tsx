@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
-import { DataTable } from "@/components/admin/DataTable"
+import { DataTable, DataTableActions, type DataTableAction } from "@/components/admin/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,7 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SolutionHistory } from "@/components/work-orders/SolutionHistory"
 import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
+import { latestSolution } from "@/lib/work-orders/solutions"
 import { marineFixture } from "@/lib/fixtures/marine"
 import { workOrderFormSchema, type WorkOrderFormValues } from "@/lib/work-orders/schema"
 import {
@@ -32,9 +34,22 @@ import {
   eligibleCrew,
   workOrdersForCaptain,
 } from "@/lib/work-orders/rules"
-import { WORK_ORDER_STATUS_LABELS } from "@/lib/work-orders/types"
+import { WORK_ORDER_STATUS_LABELS, type WorkOrder, type WorkOrderStatus } from "@/lib/work-orders/types"
 import { useSessionStore } from "@/lib/session/store"
 import { memberName } from "@/lib/session/types"
+
+const statusClassName: Partial<Record<WorkOrderStatus, string>> = {
+  accepted: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+  rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+}
+
+function WorkOrderStatusBadge({ status }: { status: WorkOrderStatus }) {
+  return (
+    <Badge variant="secondary" className={statusClassName[status]}>
+      {WORK_ORDER_STATUS_LABELS[status]}
+    </Badge>
+  )
+}
 
 const emptyWorkOrderForm: WorkOrderFormValues = {
   title: "",
@@ -45,7 +60,7 @@ const emptyWorkOrderForm: WorkOrderFormValues = {
 export function CaptainWorkspace() {
   const memberId = useSessionStore((state) => state.memberId)
   const sessionVesselId = useSessionStore((state) => state.vesselId)
-  const { orders, addWorkOrder } = useWorkOrders()
+  const { orders, addWorkOrder, updateWorkOrder, reviewWorkOrder } = useWorkOrders()
   const vessels = captainVessels(marineFixture, memberId ?? "")
   const selected =
     vessels.find((vessel) => vessel.id === sessionVesselId) ?? vessels[0] ?? null
@@ -62,6 +77,8 @@ export function CaptainWorkspace() {
       captainId={memberId ?? ""}
       orders={workOrdersForCaptain(orders, selected.id, memberId ?? "")}
       onCreate={addWorkOrder}
+      onUpdate={updateWorkOrder}
+      onReview={reviewWorkOrder}
     />
   )
 }
@@ -72,6 +89,8 @@ function VesselOrders({
   captainId,
   orders,
   onCreate,
+  onUpdate,
+  onReview,
 }: {
   vesselId: string
   vesselName: string
@@ -84,10 +103,15 @@ function VesselOrders({
     assigneeId: string
     createdById: string
   }) => string | null
+  onUpdate: (id: string, input: { title: string; issue: string; assigneeId: string }) => string | null
+  onReview: (id: string, status: "accepted" | "rejected") => void
 }) {
   const crew = eligibleCrew(marineFixture, vesselId)
   const crewItems = Object.fromEntries(crew.map((member) => [member.id, memberName(member)]))
   const [open, setOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const editing = orders.find((order) => order.id === editingId) ?? null
+  const crewLocked = editing?.status === "done"
   const [query, setQuery] = useState("")
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
@@ -108,18 +132,35 @@ function VesselOrders({
 
   function closeModal() {
     setOpen(false)
+    setEditingId(null)
     reset(emptyWorkOrderForm)
     clearErrors()
   }
 
-  function onValid(values: WorkOrderFormValues) {
-    const message = onCreate({
-      vesselId,
-      title: values.title,
-      issue: values.issue,
-      assigneeId: values.assigneeId,
-      createdById: captainId,
+  function openEdit(order: WorkOrder) {
+    setEditingId(order.id)
+    reset({
+      title: order.title,
+      issue: order.issue,
+      assigneeId: order.assigneeId,
     })
+    clearErrors()
+    setOpen(true)
+  }
+
+  function onValid(values: WorkOrderFormValues) {
+    const message = editing
+      ? onUpdate(editing.id, {
+          ...values,
+          assigneeId: crewLocked ? editing.assigneeId : values.assigneeId,
+        })
+      : onCreate({
+          vesselId,
+          title: values.title,
+          issue: values.issue,
+          assigneeId: values.assigneeId,
+          createdById: captainId,
+        })
     if (message) {
       setError("root", { message })
       return
@@ -136,15 +177,27 @@ function VesselOrders({
   }
 
   return (
-    <section className="rounded-lg border">
-      <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
+    <section className="min-w-0 max-w-full rounded-lg border max-md:overflow-x-auto">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b px-4 py-3 md:flex md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold">{vesselName}</h2>
           <p className="text-sm text-muted-foreground">
             {orders.length} {orders.length === 1 ? "work order" : "work orders"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          className="md:order-last"
+          onClick={() => {
+            setEditingId(null)
+            reset(emptyWorkOrderForm)
+            clearErrors()
+            setOpen(true)
+          }}
+        >
+          Add work order
+        </Button>
+        <div className="col-span-2 md:col-auto">
           <Label htmlFor="work-order-search" className="sr-only">
             Search
           </Label>
@@ -152,16 +205,13 @@ function VesselOrders({
             id="work-order-search"
             value={query}
             placeholder="Search title"
-            className="w-56"
+            className="w-full md:w-56"
             onChange={(event) => setQuery(event.target.value)}
           />
-          <Button type="button" onClick={() => setOpen(true)}>
-            Add work order
-          </Button>
         </div>
       </div>
       <DataTable
-        minWidth="min-w-[52rem]"
+        minWidth="min-w-[64rem]"
         empty={normalizedQuery ? "No matching work orders." : "No work orders yet."}
         rows={visible}
         getRowKey={(order) => order.id}
@@ -198,9 +248,32 @@ function VesselOrders({
             header: "Status",
             width: "w-32",
             value: (order) => WORK_ORDER_STATUS_LABELS[order.status],
-            cell: (order) => (
-              <Badge variant="secondary">{WORK_ORDER_STATUS_LABELS[order.status]}</Badge>
-            ),
+            cell: (order) => <WorkOrderStatusBadge status={order.status} />,
+          },
+          {
+            header: "Actions",
+            width: "w-80",
+            align: "center",
+            cell: (order) => {
+              const actions: DataTableAction[] = [
+                { label: "Edit", onClick: () => openEdit(order) },
+              ]
+              if (order.status === "done") {
+                actions.push(
+                  {
+                    label: "Accept",
+                    variant: "success",
+                    onClick: () => onReview(order.id, "accepted"),
+                  },
+                  {
+                    label: "Reject",
+                    variant: "destructive",
+                    onClick: () => onReview(order.id, "rejected"),
+                  },
+                )
+              }
+              return <DataTableActions inline actions={actions} />
+            },
           },
         ]}
       />
@@ -216,8 +289,14 @@ function VesselOrders({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add work order</DialogTitle>
-            <DialogDescription>Enter a title, an issue, and a crew member.</DialogDescription>
+            <DialogTitle>{editingId ? "Edit work order" : "Add work order"}</DialogTitle>
+            <DialogDescription>
+              {crewLocked
+                ? "Update the title and issue. The assigned crew member stays as it is."
+                : editing
+                  ? "Update the title, issue, and crew member."
+                  : "Enter a title, an issue, and a crew member."}
+            </DialogDescription>
           </DialogHeader>
           <form
             id="work-order-form"
@@ -255,13 +334,15 @@ function VesselOrders({
                   <Select
                     items={crewItems}
                     value={field.value ? field.value : null}
+                    disabled={crewLocked}
                     onValueChange={(value) => {
-                      if (value !== null) {
-                        field.onChange(value)
+                      if (crewLocked || value === null) {
+                        return
                       }
+                      field.onChange(value)
                     }}
                   >
-                    <SelectTrigger id="work-order-crew" className="w-full">
+                    <SelectTrigger id="work-order-crew" className="w-full" disabled={crewLocked}>
                       <SelectValue placeholder="Select a crew member" />
                     </SelectTrigger>
                     <SelectContent>
@@ -278,6 +359,22 @@ function VesselOrders({
                 <p className="text-sm text-destructive">{errors.assigneeId.message}</p>
               ) : null}
             </div>
+            {crewLocked ? (
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="work-order-solution">Solution</Label>
+                <Textarea
+                  id="work-order-solution"
+                  value={latestSolution(editing)?.text ?? ""}
+                  disabled
+                />
+              </div>
+            ) : null}
+            {editing && editing.solutions.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium">Solution history</p>
+                <SolutionHistory solutions={editing.solutions} />
+              </div>
+            ) : null}
             {errors.root?.message ? (
               <p role="alert" className="text-sm text-destructive">
                 {errors.root.message}
@@ -287,7 +384,7 @@ function VesselOrders({
               <Button type="button" variant="outline" onClick={closeModal}>
                 Cancel
               </Button>
-              <Button type="submit">Add work order</Button>
+              <Button type="submit">{editingId ? "Save work order" : "Add work order"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -1,28 +1,88 @@
 "use client"
 
-import { DataTable } from "@/components/admin/DataTable"
+import { useState, type FormEvent } from "react"
+import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { RecordStatus } from "@/components/admin/RecordStatus"
 import { EmptyRole } from "@/components/views/EmptyRole"
 import { useSessionStore } from "@/lib/session/store"
+import { SolutionHistory } from "@/components/work-orders/SolutionHistory"
 import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
-import { WORK_ORDER_STATUS_LABELS } from "@/lib/work-orders/types"
+import { solutionSubmitBlock } from "@/lib/work-orders/solutions"
+import {
+  WORK_ORDER_STATUS_LABELS,
+  type WorkOrder,
+  type WorkOrderStatus,
+} from "@/lib/work-orders/types"
+
+const statusClassName: Partial<Record<WorkOrderStatus, string>> = {
+  accepted: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+  rejected: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+}
+
+function WorkOrderStatusBadge({ status }: { status: WorkOrderStatus }) {
+  return (
+    <Badge variant="secondary" className={statusClassName[status]}>
+      {WORK_ORDER_STATUS_LABELS[status]}
+    </Badge>
+  )
+}
 
 export function CrewWorkOrdersPage() {
   const memberId = useSessionStore((state) => state.memberId)
   const directory = useSessionStore((state) => state.directory)
   const member = directory.members.find((item) => item.id === memberId)
-  const { orders } = useWorkOrders()
+  const { orders, submitSolution } = useWorkOrders()
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draft, setDraft] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const mine = orders
     .filter((order) => order.assigneeId === memberId)
     .sort((left, right) => right.code.localeCompare(left.code, undefined, { numeric: true }))
+  const selected = mine.find((order) => order.id === selectedId) ?? null
+  const submitBlock = selected ? solutionSubmitBlock(selected) : null
+
+  function openSolutions(order: WorkOrder) {
+    setSelectedId(order.id)
+    setDraft("")
+    setError(null)
+  }
+
+  function closeSolutions() {
+    setSelectedId(null)
+    setDraft("")
+    setError(null)
+  }
+
+  function send(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selected || !memberId) {
+      return
+    }
+    const message = submitSolution(selected.id, memberId, draft)
+    setError(message)
+    if (!message) {
+      setDraft("")
+    }
+  }
 
   if (!member) {
     return <EmptyRole />
   }
 
   return (
-    <section className="rounded-xl border bg-card">
+    <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
       <div className="border-b px-4 py-3">
         <h1 className="text-base font-semibold">Work orders</h1>
         <p className="text-sm text-muted-foreground">
@@ -63,12 +123,73 @@ export function CrewWorkOrdersPage() {
             header: "Status",
             width: "w-32",
             value: (order) => WORK_ORDER_STATUS_LABELS[order.status],
+            cell: (order) => <WorkOrderStatusBadge status={order.status} />,
+          },
+          {
+            header: "Actions",
+            width: "w-40",
+            align: "center",
             cell: (order) => (
-              <Badge variant="secondary">{WORK_ORDER_STATUS_LABELS[order.status]}</Badge>
+              <DataTableActions
+                fit
+                actions={[{ label: "Solutions", onClick: () => openSolutions(order) }]}
+              />
             ),
           },
         ]}
       />
+      <Dialog
+        open={selected !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            closeSolutions()
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selected ? `${selected.code} solutions` : "Solutions"}</DialogTitle>
+            <DialogDescription>
+              {submitBlock ?? "Send one solution. You can send another after this one is rejected."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <SolutionHistory solutions={selected?.solutions ?? []} />
+            {selected && !submitBlock ? (
+              <form
+                id="crew-solution-form"
+                className="flex flex-col gap-1"
+                onSubmit={send}
+              >
+                <Label htmlFor="crew-solution">Solution</Label>
+                <Textarea
+                  id="crew-solution"
+                  value={draft}
+                  onChange={(event) => {
+                    setDraft(event.target.value)
+                    setError(null)
+                  }}
+                />
+              </form>
+            ) : null}
+            {error ? (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeSolutions}>
+              Close
+            </Button>
+            {selected && !submitBlock ? (
+              <Button type="submit" form="crew-solution-form">
+                Send solution
+              </Button>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }
@@ -90,7 +211,7 @@ export function CrewVesselsPage() {
   }
 
   return (
-    <section className="rounded-xl border bg-card">
+    <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
       <div className="border-b px-4 py-3">
         <h1 className="text-base font-semibold">Vessel assignments</h1>
         <p className="text-sm text-muted-foreground">

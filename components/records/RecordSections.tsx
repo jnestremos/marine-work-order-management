@@ -37,8 +37,8 @@ export function ServiceRecordSection() {
   }
 
   return (
-    <section className="rounded-xl border bg-card">
-      <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
+    <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+      <div className="flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-base font-semibold">Service record</h1>
           <p className="text-sm text-muted-foreground">
@@ -46,7 +46,7 @@ export function ServiceRecordSection() {
             vessel assignments.
           </p>
         </div>
-        <div>
+        <div className="w-full md:w-64">
           <Label htmlFor="service-record-search" className="sr-only">
             Search
           </Label>
@@ -54,7 +54,7 @@ export function ServiceRecordSection() {
             id="service-record-search"
             value={query}
             placeholder="Search vessel or role"
-            className="w-64"
+            className="w-full"
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>

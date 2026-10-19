@@ -1,4 +1,5 @@
 import type { MarineFixture } from "@/lib/session/types"
+import type { WorkOrder } from "@/lib/work-orders/types"
 
 export const marineFixture: MarineFixture = {
   vessels: [
@@ -127,3 +128,61 @@ export const marineFixture: MarineFixture = {
     },
   ],
 }
+
+export const workOrderFixture: WorkOrder[] = [
+  {
+    id: "wo_horizon_light",
+    code: "WO-1001",
+    vesselId: "vessel_horizon",
+    title: "Starboard navigation light",
+    issue: "The starboard navigation light stays dark after the breaker is reset.",
+    solutions: [],
+    status: "open",
+    assigneeId: "member_casey",
+    createdById: "member_blake",
+  },
+  {
+    id: "wo_horizon_pump",
+    code: "WO-1002",
+    vesselId: "vessel_horizon",
+    title: "Bilge pump seal",
+    issue: "The engine-room bilge pump weeps around the shaft seal.",
+    solutions: [],
+    status: "in_progress",
+    assigneeId: "member_harper",
+    createdById: "member_blake",
+  },
+  {
+    id: "wo_horizon_radio",
+    code: "WO-1003",
+    vesselId: "vessel_horizon",
+    title: "VHF radio check",
+    issue: "Channel 16 drops out during the radio check.",
+    solutions: [
+      {
+        id: "sol_radio_mount",
+        text: "Tightened the antenna mount.",
+        status: "rejected",
+      },
+      {
+        id: "sol_radio_connector",
+        text: "Replaced the antenna connector and confirmed a clear radio check.",
+        status: "pending",
+      },
+    ],
+    status: "done",
+    assigneeId: "member_ivan",
+    createdById: "member_blake",
+  },
+  {
+    id: "wo_horizon_damper",
+    code: "WO-1004",
+    vesselId: "vessel_horizon",
+    title: "Fire damper latch",
+    issue: "The galley fire damper latch does not hold closed.",
+    solutions: [],
+    status: "open",
+    assigneeId: "member_kai",
+    createdById: "member_blake",
+  },
+]

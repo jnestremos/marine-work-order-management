@@ -154,15 +154,18 @@ export function UsersSection({
 	}
 
 	return (
-			<section className="rounded-xl border bg-card">
-			<div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:items-center md:justify-between border-b px-4 py-3">
+			<section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+			<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b px-4 py-3 md:flex md:items-center md:justify-between">
 				<div>
 					<h2 className="text-base font-semibold">Users</h2>
 					<p className="text-sm text-muted-foreground">
 						{members.length} {members.length === 1 ? "user" : "users"}
 					</p>
 				</div>
-				<div className="flex items-center gap-2">
+				<Button type="button" className="md:order-last" onClick={openAdd}>
+					Add user
+				</Button>
+				<div className="col-span-2 md:col-auto">
 					<Label htmlFor="user-search" className="sr-only">
 						Search
 					</Label>
@@ -170,12 +173,9 @@ export function UsersSection({
 						id="user-search"
 						value={query}
 						placeholder="Search first or last name"
-						className="w-56"
+						className="w-full md:w-56"
 						onChange={(event) => setQuery(event.target.value)}
 					/>
-					<Button type="button" onClick={openAdd}>
-						Add user
-					</Button>
 				</div>
 			</div>
 			{actionError ? (
