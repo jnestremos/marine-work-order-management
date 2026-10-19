@@ -163,11 +163,13 @@ export const workOrderFixture: WorkOrder[] = [
         id: "sol_radio_mount",
         text: "Tightened the antenna mount.",
         status: "rejected",
+        postedAt: "2026-10-10T08:15:00.000Z",
       },
       {
         id: "sol_radio_connector",
         text: "Replaced the antenna connector and confirmed a clear radio check.",
         status: "pending",
+        postedAt: "2026-10-12T14:40:00.000Z",
       },
     ],
     status: "done",

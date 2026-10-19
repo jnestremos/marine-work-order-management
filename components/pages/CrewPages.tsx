@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { RecordStatus } from "@/components/admin/RecordStatus"
 import { EmptyRole } from "@/components/views/EmptyRole"
 import { useSessionStore } from "@/lib/session/store"
-import { SolutionHistory } from "@/components/work-orders/SolutionHistory"
+import { SolutionHistoryDialog } from "@/components/work-orders/SolutionHistory"
 import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
 import { solutionSubmitBlock } from "@/lib/work-orders/solutions"
 import {
@@ -45,12 +45,14 @@ export function CrewWorkOrdersPage() {
   const member = directory.members.find((item) => item.id === memberId)
   const { orders, submitSolution } = useWorkOrders()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [historyId, setHistoryId] = useState<string | null>(null)
   const [draft, setDraft] = useState("")
   const [error, setError] = useState<string | null>(null)
   const mine = orders
     .filter((order) => order.assigneeId === memberId)
     .sort((left, right) => right.code.localeCompare(left.code, undefined, { numeric: true }))
   const selected = mine.find((order) => order.id === selectedId) ?? null
+  const history = mine.find((order) => order.id === historyId) ?? null
   const submitBlock = selected ? solutionSubmitBlock(selected) : null
 
   function openSolutions(order: WorkOrder) {
@@ -127,12 +129,17 @@ export function CrewWorkOrdersPage() {
           },
           {
             header: "Actions",
-            width: "w-40",
+            width: "w-72",
             align: "center",
             cell: (order) => (
               <DataTableActions
-                fit
-                actions={[{ label: "Solutions", onClick: () => openSolutions(order) }]}
+                inline
+                actions={[
+                  { label: "History", onClick: () => setHistoryId(order.id) },
+                  ...(solutionSubmitBlock(order)
+                    ? []
+                    : [{ label: "Send solution", onClick: () => openSolutions(order) }]),
+                ]}
               />
             ),
           },
@@ -146,15 +153,14 @@ export function CrewWorkOrdersPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{selected ? `${selected.code} solutions` : "Solutions"}</DialogTitle>
+            <DialogTitle>{selected ? `Send solution for ${selected.code}` : "Send solution"}</DialogTitle>
             <DialogDescription>
-              {submitBlock ?? "Send one solution. You can send another after this one is rejected."}
+              Send one solution. You can send another after this one is rejected.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            <SolutionHistory solutions={selected?.solutions ?? []} />
             {selected && !submitBlock ? (
               <form
                 id="crew-solution-form"
@@ -190,6 +196,17 @@ export function CrewWorkOrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <SolutionHistoryDialog
+        code={history?.code ?? ""}
+        title={history?.title ?? ""}
+        solutions={history?.solutions ?? []}
+        open={history !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setHistoryId(null)
+          }
+        }}
+      />
     </section>
   )
 }

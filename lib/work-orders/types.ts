@@ -6,6 +6,7 @@ export type WorkOrderSolution = {
   id: string
   text: string
   status: SolutionStatus
+  postedAt: string
 }
 
 export type WorkOrder = {

@@ -1,9 +1,30 @@
+import { DataTable } from "@/components/admin/DataTable"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   SOLUTION_STATUS_LABELS,
   type SolutionStatus,
   type WorkOrderSolution,
 } from "@/lib/work-orders/types"
+
+function formatPostedAt(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) {
+    return "—"
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date)
+}
 
 const statusClassName: Record<SolutionStatus, string | undefined> = {
   pending: undefined,
@@ -23,21 +44,77 @@ function SolutionStatusBadge({ status }: { status: SolutionStatus }) {
 }
 
 export function SolutionHistory({ solutions }: { solutions: WorkOrderSolution[] }) {
-  if (solutions.length === 0) {
-    return <p className="text-sm text-muted-foreground">No solutions yet.</p>
-  }
+  const rows = [...solutions].reverse()
 
   return (
-    <ol className="flex max-h-48 flex-col gap-2 overflow-y-auto">
-      {[...solutions].reverse().map((solution, index) => (
-        <li key={solution.id} className="rounded-lg border px-3 py-2">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Solution {solutions.length - index}</p>
-            <SolutionStatusBadge status={solution.status} />
-          </div>
-          <p className="text-sm whitespace-pre-wrap">{solution.text}</p>
-        </li>
-      ))}
-    </ol>
+    <div className="h-48 max-h-48 min-h-0 w-full max-w-full overflow-y-auto rounded-lg border">
+      <DataTable
+        minWidth="w-full min-w-0"
+        containerClassName="min-w-0 max-w-full overflow-x-auto"
+        empty="No solutions yet."
+        rows={rows}
+        getRowKey={(solution) => solution.id}
+        columns={[
+          {
+            header: "Solution",
+            wrap: true,
+            value: (solution) => solution.text,
+            cell: (solution) => solution.text,
+          },
+          {
+            header: "Date posted",
+            width: "w-44",
+            value: (solution) => solution.postedAt,
+            cell: (solution) => formatPostedAt(solution.postedAt),
+          },
+          {
+            header: "Status",
+            width: "w-32",
+            value: (solution) => SOLUTION_STATUS_LABELS[solution.status],
+            cell: (solution) => <SolutionStatusBadge status={solution.status} />,
+          },
+        ]}
+      />
+    </div>
+  )
+}
+
+export function SolutionHistoryDialog({
+  code,
+  title,
+  solutions,
+  open,
+  onOpenChange,
+}: {
+  code: string
+  title: string
+  solutions: WorkOrderSolution[]
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          onOpenChange(false)
+        }
+      }}
+    >
+      <DialogContent className="max-h-[calc(100dvh-2rem)] min-h-0 min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Solution history</DialogTitle>
+          <DialogDescription>
+            {code ? `${code} · ${title}` : "Solutions sent for this work order."}
+          </DialogDescription>
+        </DialogHeader>
+        <SolutionHistory solutions={solutions} />
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

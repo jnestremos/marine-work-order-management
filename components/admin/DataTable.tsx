@@ -6,6 +6,8 @@ import {
   BanIcon,
   CircleCheckIcon,
   CircleXIcon,
+  EyeIcon,
+  HistoryIcon,
   ListFilterIcon,
   PencilIcon,
   Trash2Icon,
@@ -32,12 +34,15 @@ export type DataTableColumn<Row> = {
   width?: string
   align?: "start" | "center"
   cellClassName?: string
+  wrap?: boolean
   cell: (row: Row) => ReactNode
   value?: (row: Row) => string
 }
 
 const actionIcons: Record<string, LucideIcon> = {
   Edit: PencilIcon,
+  View: EyeIcon,
+  History: HistoryIcon,
   Deactivate: BanIcon,
   Activate: CircleCheckIcon,
   Accept: CircleCheckIcon,
@@ -291,7 +296,8 @@ export function DataTable<Row>({
     }),
   )
   const firstColumn = columns[0]
-  const firstColumnCh = firstColumn
+  const fitFirstColumn = Boolean(firstColumn && !firstColumn.wrap)
+  const firstColumnCh = fitFirstColumn
     ? Math.max(
         firstColumn.header.length,
         ...rows.map((row) => firstColumn.value?.(row)?.length ?? 0),
@@ -331,7 +337,7 @@ export function DataTable<Row>({
                   : undefined
               }
               style={
-                index === 0
+                index === 0 && fitFirstColumn
                   ? { width: `${firstColumnCh}ch`, minWidth: `${firstColumnCh}ch` }
                   : undefined
               }
@@ -388,17 +394,19 @@ export function DataTable<Row>({
                 <TableCell
                   key={column.header}
                   style={
-                    index === 0
+                    index === 0 && fitFirstColumn
                       ? { width: `${firstColumnCh}ch`, minWidth: `${firstColumnCh}ch` }
                       : undefined
                   }
                   className={cn(
                     "px-4",
-                    index === 0
-                      ? "whitespace-nowrap"
-                      : column.align === "center"
-                        ? "text-center"
-                        : "truncate",
+                    column.wrap
+                      ? "whitespace-normal break-words"
+                      : index === 0
+                        ? "whitespace-nowrap"
+                        : column.align === "center"
+                          ? "text-center"
+                          : "truncate",
                     column.cellClassName,
                   )}
                 >

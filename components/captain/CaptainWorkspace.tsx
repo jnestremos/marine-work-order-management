@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { HistoryIcon } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
 import { DataTable, DataTableActions, type DataTableAction } from "@/components/admin/DataTable"
@@ -24,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { SolutionHistory } from "@/components/work-orders/SolutionHistory"
+import { SolutionHistoryDialog } from "@/components/work-orders/SolutionHistory"
 import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
 import { latestSolution } from "@/lib/work-orders/solutions"
 import { marineFixture } from "@/lib/fixtures/marine"
@@ -110,7 +111,9 @@ function VesselOrders({
   const crewItems = Object.fromEntries(crew.map((member) => [member.id, memberName(member)]))
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [historyId, setHistoryId] = useState<string | null>(null)
   const editing = orders.find((order) => order.id === editingId) ?? null
+  const history = orders.find((order) => order.id === historyId) ?? null
   const crewLocked = editing?.status === "done"
   const [query, setQuery] = useState("")
   const normalizedQuery = query.trim().toLowerCase()
@@ -133,6 +136,7 @@ function VesselOrders({
   function closeModal() {
     setOpen(false)
     setEditingId(null)
+    setHistoryId(null)
     reset(emptyWorkOrderForm)
     clearErrors()
   }
@@ -256,7 +260,7 @@ function VesselOrders({
             align: "center",
             cell: (order) => {
               const actions: DataTableAction[] = [
-                { label: "Edit", onClick: () => openEdit(order) },
+                { label: "View", onClick: () => openEdit(order) },
               ]
               if (order.status === "done") {
                 actions.push(
@@ -287,9 +291,9 @@ function VesselOrders({
           setOpen(true)
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit work order" : "Add work order"}</DialogTitle>
+            <DialogTitle>{editingId ? "View work order" : "Add work order"}</DialogTitle>
             <DialogDescription>
               {crewLocked
                 ? "Update the title and issue. The assigned crew member stays as it is."
@@ -359,20 +363,25 @@ function VesselOrders({
                 <p className="text-sm text-destructive">{errors.assigneeId.message}</p>
               ) : null}
             </div>
-            {crewLocked ? (
+            {editing && crewLocked ? (
               <div className="flex flex-col gap-1">
-                <Label htmlFor="work-order-solution">Solution</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="work-order-solution">Solution</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label="Solution history"
+                    onClick={() => setHistoryId(editing.id)}
+                  >
+                    <HistoryIcon />
+                  </Button>
+                </div>
                 <Textarea
                   id="work-order-solution"
                   value={latestSolution(editing)?.text ?? ""}
                   disabled
                 />
-              </div>
-            ) : null}
-            {editing && editing.solutions.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium">Solution history</p>
-                <SolutionHistory solutions={editing.solutions} />
               </div>
             ) : null}
             {errors.root?.message ? (
@@ -387,6 +396,17 @@ function VesselOrders({
               <Button type="submit">{editingId ? "Save work order" : "Add work order"}</Button>
             </DialogFooter>
           </form>
+          <SolutionHistoryDialog
+            code={history?.code ?? ""}
+            title={history?.title ?? ""}
+            solutions={history?.solutions ?? []}
+            open={history !== null}
+            onOpenChange={(next) => {
+              if (!next) {
+                setHistoryId(null)
+              }
+            }}
+          />
         </DialogContent>
       </Dialog>
     </section>

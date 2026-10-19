@@ -15,7 +15,12 @@ export function solutionSubmitBlock(order: WorkOrder): string | null {
   return "Wait until the current solution is rejected before sending another"
 }
 
-export function submitSolution(order: WorkOrder, text: string, id: string): WorkOrder | string {
+export function submitSolution(
+  order: WorkOrder,
+  text: string,
+  id: string,
+  postedAt = new Date().toISOString(),
+): WorkOrder | string {
   const trimmed = text.trim()
   if (!trimmed) {
     return "Solution is required"
@@ -27,7 +32,7 @@ export function submitSolution(order: WorkOrder, text: string, id: string): Work
   return {
     ...order,
     status: "done",
-    solutions: [...order.solutions, { id, text: trimmed, status: "pending" }],
+    solutions: [...order.solutions, { id, text: trimmed, status: "pending", postedAt }],
   }
 }
 
