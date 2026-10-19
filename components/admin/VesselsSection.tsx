@@ -145,7 +145,7 @@ export function VesselsSection({
   }
 
   return (
-    <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+    <section className="min-w-0 max-w-full rounded-xl border bg-card">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b px-4 py-3 md:flex md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold">Vessels</h2>
@@ -196,7 +196,7 @@ export function VesselsSection({
           },
           {
             header: "Status",
-            width: "w-32",
+            width: "min-w-32",
             value: (vessel) => (vessel.active ? "Active" : "Inactive"),
             cell: (vessel) => (
               <Badge variant={vessel.active ? "active" : "inactive"}>
@@ -206,7 +206,7 @@ export function VesselsSection({
           },
           {
             header: "Actions",
-            width: "w-72",
+            width: "min-w-72",
             align: "center",
             cell: (vessel) => (
               <DataTableActions
@@ -312,7 +312,7 @@ export function VesselsSection({
                   },
                   {
                     header: "Role",
-                    width: "w-32",
+                    width: "min-w-32",
                     value: (assignment) => {
                       const member = members.find((item) => item.id === assignment.memberId)
                       return member ? ROLE_LABELS[member.role] : ""
@@ -324,7 +324,7 @@ export function VesselsSection({
                   },
                   {
                     header: "Actions",
-                    width: "w-40",
+                    width: "min-w-40",
                     align: "center",
                     cell: (assignment) => {
                       const member = members.find((item) => item.id === assignment.memberId)

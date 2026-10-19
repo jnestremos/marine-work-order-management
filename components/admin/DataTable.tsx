@@ -31,12 +31,24 @@ import { cn } from "cn"
 
 export type DataTableColumn<Row> = {
   header: string
+  /** Tailwind min-width only (e.g. `min-w-32`). Avoid fixed `w-*` — it crushes headers on mobile. */
   width?: string
   align?: "start" | "center"
   cellClassName?: string
   wrap?: boolean
   cell: (row: Row) => ReactNode
   value?: (row: Row) => string
+}
+
+function columnWidthClass<Row>(column: DataTableColumn<Row>) {
+  if (column.width) {
+    return column.width
+  }
+  if (column.header === "Actions") {
+    return "min-w-40"
+  }
+  // Leave room for the sort/filter control beside the label.
+  return column.value ? "min-w-32" : "min-w-28"
 }
 
 const actionIcons: Record<string, LucideIcon> = {
@@ -298,15 +310,6 @@ export function DataTable<Row>({
       return columnText(column, row).toLowerCase().includes(filter)
     }),
   )
-  const firstColumn = columns[0]
-  const fitFirstColumn = Boolean(firstColumn && !firstColumn.wrap)
-  const firstColumnCh = fitFirstColumn
-    ? Math.max(
-        firstColumn.header.length,
-        ...rows.map((row) => firstColumn.value?.(row)?.length ?? 0),
-      ) + 8
-    : 0
-
   if (sort) {
     const column = filterable.find((item) => item.header === sort.header)
     if (column) {
@@ -322,12 +325,12 @@ export function DataTable<Row>({
 
   return (
     <Table
-      className={cn("table-fixed border-separate border-spacing-0", minWidth)}
+      className={cn("w-max border-separate border-spacing-0", minWidth)}
       containerClassName={containerClassName}
     >
-      <TableHeader className="sticky top-0 z-10 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:border-b [&_th]:bg-card">
+      <TableHeader className="sticky top-0 z-10 bg-card [&_th]:border-b [&_th]:bg-card">
         <TableRow>
-          {columns.map((column, index) => (
+          {columns.map((column) => (
             <TableHead
               key={column.header}
               aria-sort={
@@ -339,24 +342,19 @@ export function DataTable<Row>({
                     : "none"
                   : undefined
               }
-              style={
-                index === 0 && fitFirstColumn
-                  ? { width: `${firstColumnCh}ch`, minWidth: `${firstColumnCh}ch` }
-                  : undefined
-              }
               className={cn(
                 "px-4 whitespace-nowrap",
-                index === 0 ? undefined : column.width,
+                columnWidthClass(column),
                 column.align === "center" && "text-center",
               )}
             >
               <div
                 className={cn(
-                  "flex items-center gap-1",
+                  "flex min-w-max items-center gap-1",
                   column.align === "center" && "justify-center",
                 )}
               >
-                <span>{column.header}</span>
+                <span className="whitespace-nowrap">{column.header}</span>
                 {column.value ? (
                   <ColumnMenu
                     header={column.header}
@@ -393,23 +391,16 @@ export function DataTable<Row>({
               key={getRowKey(row)}
               data-state={isSelected?.(row) ? "selected" : undefined}
             >
-              {columns.map((column, index) => (
+              {columns.map((column) => (
                 <TableCell
                   key={column.header}
-                  style={
-                    index === 0 && fitFirstColumn
-                      ? { width: `${firstColumnCh}ch`, minWidth: `${firstColumnCh}ch` }
-                      : undefined
-                  }
                   className={cn(
                     "px-4",
                     column.wrap
                       ? "whitespace-normal break-words"
-                      : index === 0
-                        ? "whitespace-nowrap"
-                        : column.align === "center"
-                          ? "whitespace-nowrap text-center"
-                          : "truncate",
+                      : "whitespace-nowrap",
+                    column.align === "center" && "text-center",
+                    columnWidthClass(column),
                     column.cellClassName,
                   )}
                 >

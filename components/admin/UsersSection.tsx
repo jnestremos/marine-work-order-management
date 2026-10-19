@@ -146,7 +146,7 @@ export function UsersSection({
 	}
 
 	return (
-			<section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+			<section className="min-w-0 max-w-full rounded-xl border bg-card">
 			<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b px-4 py-3 md:flex md:items-center md:justify-between">
 				<div>
 					<h2 className="text-base font-semibold">Users</h2>
@@ -184,24 +184,26 @@ export function UsersSection({
 				columns={[
 					{
 						header: "First name",
+						width: "min-w-32",
 						cellClassName: "font-medium",
 						value: (member) => member.firstName,
 						cell: (member) => member.firstName,
 					},
 					{
 						header: "Last name",
+						width: "min-w-32",
 						value: (member) => member.lastName,
 						cell: (member) => member.lastName,
 					},
 					{
 						header: "Role",
-						width: "w-36",
+						width: "min-w-36",
 						value: (member) => ROLE_LABELS[member.role],
 						cell: (member) => ROLE_LABELS[member.role],
 					},
 					{
 						header: "Status",
-						width: "w-32",
+						width: "min-w-32",
 						value: (member) => (member.active ? "Active" : "Inactive"),
 						cell: (member) => (
 							<Badge variant={member.active ? "active" : "inactive"}>
@@ -211,7 +213,7 @@ export function UsersSection({
 					},
 					{
 						header: "Actions",
-						width: "w-72",
+						width: "min-w-72",
 						align: "center",
 						cell: (member) => (
 							<DataTableActions

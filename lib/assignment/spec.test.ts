@@ -194,9 +194,35 @@ describe("assignment: browser Supabase client", () => {
     expect(api).toMatch(/from\("work_orders"\)/)
     expect(api).toMatch(/from\("members"\)/)
     expect(api).toMatch(/from\("work_order_solutions"\)/)
+    expect(api).toMatch(/from\("service_records"\)/)
+    expect(api).toMatch(/from\("assignments"\)/)
     expect(api).toMatch(/review_note/)
     expect(api).toMatch(/export async function loadMembers/)
     expect(api).toMatch(/export async function loadWorkOrders/)
+    expect(api).toMatch(/export async function addAssignment/)
+    expect(api).toMatch(/export async function loadServiceRecords/)
+  })
+
+  it("invalidates service records when assignments change", () => {
+    const mutations = readFileSync(
+      path.join(root, "components/data/marine-mutations.ts"),
+      "utf8",
+    )
+    expect(mutations).toMatch(/addAssignment:[\s\S]*marineKeys\.serviceRecords/)
+    expect(mutations).toMatch(/removeAssignment:[\s\S]*marineKeys\.serviceRecords/)
+    expect(mutations).toMatch(/setVesselActive:[\s\S]*marineKeys\.serviceRecords/)
+    expect(mutations).toMatch(/saveUser:[\s\S]*marineKeys\.assignments/)
+  })
+
+  it("sizes table columns with min-width so mobile headers stay readable", () => {
+    const dataTable = readFileSync(
+      path.join(root, "components/admin/DataTable.tsx"),
+      "utf8",
+    )
+    expect(dataTable).toMatch(/min-w-max/)
+    expect(dataTable).toMatch(/function columnWidthClass/)
+    expect(dataTable).not.toMatch(/columnMinWidth/)
+    expect(dataTable).toMatch(/Avoid fixed `w-\*`/)
   })
 
   it("fetches marine resources on demand with TanStack Query", () => {
@@ -211,6 +237,7 @@ describe("assignment: browser Supabase client", () => {
     expect(queries).toMatch(/@tanstack\/react-query/)
     expect(queries).toMatch(/useWorkOrdersQuery/)
     expect(queries).toMatch(/useMembersQuery/)
+    expect(queries).toMatch(/useServiceRecordsQuery/)
     expect(provider).toMatch(/QueryClientProvider/)
     expect(provider).not.toMatch(/loadMarineData/)
   })
@@ -244,11 +271,25 @@ describe("assignment: documentation deliverables", () => {
       "members",
       "vessels",
       "assignments",
+      "service_records",
+      "sea_services",
       "work_orders",
       "work_order_solutions",
     ]) {
       expect(schema).toMatch(new RegExp(`\\b${table}\\b`))
     }
+  })
+
+  it("enforces assignment and service-record open/close rules in Postgres", () => {
+    const schema = readFileSync(path.join(root, "schema.sql"), "utf8")
+    expect(schema).toMatch(/assignments_after_insert/)
+    expect(schema).toMatch(/assignments_after_delete/)
+    expect(schema).toMatch(/assignments_before_delete/)
+    expect(schema).toMatch(/service_records_after_update/)
+    expect(schema).toMatch(/unresolved_codes_for_assignment/)
+    expect(schema).toMatch(/service_records_end_on_or_after_start/)
+    expect(schema).toMatch(/sea_services_sign_off_on_or_after_sign_on/)
+    expect(schema).toMatch(/Setting an end date removes the matching vessel assignment/)
   })
 
   it("documents the ERD in README.md", () => {

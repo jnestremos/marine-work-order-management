@@ -1,6 +1,7 @@
 import { z } from "zod"
 
-function isIsoDate(value: string) {
+/** True only for real calendar days in `YYYY-MM-DD` (rejects 2024-02-31, etc.). */
+export function isIsoDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false
   }
@@ -13,8 +14,12 @@ function isIsoDate(value: string) {
   )
 }
 
-function requiredDate(message: string) {
-  return z.string().trim().refine(isIsoDate, message)
+function requiredDate(requiredMessage: string, invalidMessage = "Enter a valid calendar date") {
+  return z
+    .string()
+    .trim()
+    .min(1, requiredMessage)
+    .refine(isIsoDate, invalidMessage)
 }
 
 export const serviceRecordFormSchema = z
@@ -29,10 +34,14 @@ export const serviceRecordFormSchema = z
       return
     }
     if (!isIsoDate(data.endDate)) {
-      ctx.addIssue({ code: "custom", message: "Enter a valid end date", path: ["endDate"] })
+      ctx.addIssue({
+        code: "custom",
+        message: "Enter a valid calendar date",
+        path: ["endDate"],
+      })
       return
     }
-    if (data.endDate < data.startDate) {
+    if (isIsoDate(data.startDate) && data.endDate < data.startDate) {
       ctx.addIssue({
         code: "custom",
         message: "End date must be on or after the start date",

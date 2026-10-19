@@ -186,4 +186,102 @@ test.describe("admin directory process", () => {
     await expect(page.getByText("MV Horizon")).toBeVisible()
     await expect(page.getByText("MV Aurora")).toBeVisible()
   })
+
+  test("signing off a service record removes the vessel assignment", async ({ page }) => {
+    await setSession(page, {
+      vessel: "MV Horizon",
+      role: "Admin",
+      member: "Avery Chen",
+    })
+    await page.goto("/admin/users")
+    await page.getByLabel("Search").fill("Ivan")
+    const userRow = page
+      .locator("tbody tr")
+      .filter({ hasText: "Ivan" })
+      .filter({ hasText: "Brooks" })
+    await expect(userRow).toBeVisible()
+    await userRow.getByRole("button", { name: "Edit" }).click()
+
+    const userDialog = page.getByRole("dialog").filter({ hasText: "Edit user" })
+    await expect(userDialog).toBeVisible()
+    const serviceRow = userDialog
+      .locator("tbody tr")
+      .filter({ hasText: "MV Horizon" })
+      .filter({ hasText: "Present" })
+      .first()
+    await expect(serviceRow).toBeVisible()
+    await serviceRow.getByRole("button", { name: "Edit" }).click()
+
+    const recordDialog = page.getByRole("dialog").filter({ hasText: "Edit service record" })
+    await expect(recordDialog).toBeVisible()
+    const startDate = await recordDialog.locator("#member-service-start").inputValue()
+    expect(startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    await expect(recordDialog.locator("#member-service-end")).toHaveAttribute("min", startDate)
+    await recordDialog.locator("#member-service-end").fill(startDate)
+    await recordDialog.getByRole("button", { name: "Save record" }).click()
+    await expect(recordDialog).toBeHidden()
+
+    await userDialog.getByRole("button", { name: "Save user" }).click()
+    await expect(userDialog).toBeHidden({ timeout: 20_000 })
+
+    await page.goto("/admin/assignments")
+    await page.getByLabel("Search").fill("Ivan")
+    await expect(page.locator("tbody tr").filter({ hasText: "Ivan Brooks" })).toHaveCount(0)
+
+    await page.getByRole("button", { name: "Add assignment" }).click()
+    const assignDialog = page.getByRole("dialog").filter({ hasText: "Add assignment" })
+    await expect(assignDialog).toBeVisible()
+    await assignDialog.locator("#assignment-user").click()
+    await page.getByRole("option", { name: "Ivan Brooks", exact: true }).click()
+    await assignDialog.locator("#assignment-vessel").click()
+    await page.getByRole("option", { name: "MV Horizon", exact: true }).click()
+    await assignDialog.getByRole("button", { name: "Add assignment" }).click()
+    await expect(assignDialog).toBeHidden({ timeout: 20_000 })
+    await expect(page.locator("tbody tr").filter({ hasText: "Ivan Brooks" })).toBeVisible()
+  })
+
+  test("mobile tables keep headers readable with horizontal scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await setSession(page, {
+      vessel: "MV Horizon",
+      role: "Admin",
+      member: "Avery Chen",
+    })
+    await page.goto("/admin/users")
+
+    const container = page.locator('[data-slot="table-container"]').first()
+    await expect(container).toBeVisible()
+    await expect(page.getByRole("columnheader", { name: /First name/i })).toBeVisible()
+    await expect(page.getByRole("columnheader", { name: /Last name/i })).toBeVisible()
+
+    const metrics = await container.evaluate((node) => ({
+      clientWidth: node.clientWidth,
+      scrollWidth: node.scrollWidth,
+    }))
+    expect(metrics.scrollWidth).toBeGreaterThan(metrics.clientWidth)
+
+    await container.evaluate((node) => {
+      node.scrollLeft = node.scrollWidth
+    })
+    await expect(page.getByRole("columnheader", { name: /^Actions$/i })).toBeVisible()
+  })
+
+  test("sea service date inputs constrain calendar selection order", async ({ page }) => {
+    await setSession(page, {
+      vessel: "MV Horizon",
+      role: "Admin",
+      member: "Avery Chen",
+    })
+    await page.goto("/admin/sea-service")
+    await page.getByRole("button", { name: "Add voyage" }).click()
+    const dialog = page.getByRole("dialog")
+    await expect(dialog).toBeVisible()
+
+    await dialog.locator("#sea-service-on-date").fill("2024-03-01")
+    await expect(dialog.locator("#sea-service-off-date")).toHaveAttribute("min", "2024-03-01")
+    await dialog.locator("#sea-service-off-date").fill("2024-09-12")
+    await expect(dialog.locator("#sea-service-on-date")).toHaveAttribute("max", "2024-09-12")
+    await dialog.getByRole("button", { name: "Cancel" }).click()
+    await expect(dialog).toBeHidden()
+  })
 })

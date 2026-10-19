@@ -144,7 +144,7 @@ comment on table public.assignments is
   'One row per member and vessel. Phase 2 rejects admins, deactivated members, a second captain on a vessel, and a captain already on another active vessel.';
 
 comment on column public.service_records.end_date is
-  'Null while the appointment is open. At most one open record per member and vessel.';
+  'Null while the appointment is open. Setting an end date removes the matching vessel assignment. At most one open record per member and vessel.';
 
 comment on table public.sea_services is
   'A voyage independent of the current assignment. Status starts pending for captain and crew, and accepted for an admin, in phase 2.';
@@ -523,6 +523,46 @@ begin
 end;
 $$;
 
+create function private.unresolved_codes_for_assignment(
+  p_member_id uuid,
+  p_vessel_id uuid
+)
+returns text[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    array(
+      select wo.code
+      from public.work_orders wo
+      where wo.vessel_id = p_vessel_id
+        and wo.status in ('open', 'in_progress')
+        and (wo.assignee_id = p_member_id or wo.created_by_id = p_member_id)
+      order by substring(wo.code from '^WO-([0-9]+)$')::bigint
+    ),
+    '{}'
+  );
+$$;
+
+create function private.assignments_before_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  codes text[];
+begin
+  codes := private.unresolved_codes_for_assignment(old.member_id, old.vessel_id);
+  if cardinality(codes) > 0 then
+    raise exception 'Resolve % before removing this assignment', private.listed(codes);
+  end if;
+  return old;
+end;
+$$;
+
 create function private.assignments_after_insert()
 returns trigger
 language plpgsql
@@ -558,6 +598,22 @@ begin
     and vessel_id = old.vessel_id
     and end_date is null;
   return old;
+end;
+$$;
+
+create function private.service_records_after_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if old.end_date is null and new.end_date is not null then
+    delete from public.assignments
+    where member_id = new.member_id
+      and vessel_id = new.vessel_id;
+  end if;
+  return new;
 end;
 $$;
 
@@ -771,6 +827,11 @@ before insert on public.assignments
 for each row
 execute function private.assignments_before_insert();
 
+create trigger assignments_before_delete
+before delete on public.assignments
+for each row
+execute function private.assignments_before_delete();
+
 create trigger assignments_after_insert
 after insert on public.assignments
 for each row
@@ -780,6 +841,11 @@ create trigger assignments_after_delete
 after delete on public.assignments
 for each row
 execute function private.assignments_after_delete();
+
+create trigger service_records_after_update
+after update on public.service_records
+for each row
+execute function private.service_records_after_update();
 
 create trigger work_orders_before_insert
 before insert on public.work_orders

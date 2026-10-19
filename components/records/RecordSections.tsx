@@ -49,7 +49,7 @@ export function ServiceRecordSection() {
       {!member ? (
         <EmptyRole />
       ) : (
-        <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+        <section className="min-w-0 max-w-full rounded-xl border bg-card">
           <div className="flex flex-col gap-3 border-b px-4 py-3 md:flex-row md:items-start md:justify-between">
             <div>
               <h1 className="text-base font-semibold">Service record</h1>
@@ -85,19 +85,19 @@ export function ServiceRecordSection() {
               },
               {
                 header: "Role",
-                width: "w-36",
+                width: "min-w-36",
                 value: (record) => ROLE_LABELS[record.role],
                 cell: (record) => ROLE_LABELS[record.role],
               },
               {
                 header: "From",
-                width: "w-36",
+                width: "min-w-36",
                 value: (record) => record.startDate,
                 cell: (record) => formatRecordDate(record.startDate),
               },
               {
                 header: "To",
-                width: "w-36",
+                width: "min-w-36",
                 value: (record) => record.endDate || "Present",
                 cell: (record) => formatRecordDate(record.endDate),
               },

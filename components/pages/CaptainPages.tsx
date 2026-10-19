@@ -40,7 +40,7 @@ export function CaptainCrewPage() {
       {!member ? (
         <EmptyRole />
       ) : (
-        <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+        <section className="min-w-0 max-w-full rounded-xl border bg-card">
           <div className="border-b px-4 py-3">
             <h1 className="text-base font-semibold">Crew assignments</h1>
             <p className="text-sm text-muted-foreground">
@@ -61,7 +61,7 @@ export function CaptainCrewPage() {
               },
               {
                 header: "Status",
-                width: "w-32",
+                width: "min-w-32",
                 value: (item) => (item.active ? "Active" : "Inactive"),
                 cell: (item) => (
                   <Badge variant={item.active ? "active" : "inactive"}>

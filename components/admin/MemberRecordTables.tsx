@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Controller, useForm } from "react-hook-form"
+import { Controller, useForm, useWatch } from "react-hook-form"
 import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { Button } from "@/components/ui/button"
 import {
@@ -146,6 +146,8 @@ export function MemberRecordTables({
     resolver: zodResolver(serviceRecordFormSchema),
     defaultValues: emptyServiceRecord,
   })
+  const serviceStartDate = useWatch({ control: serviceForm.control, name: "startDate" })
+  const serviceEndDate = useWatch({ control: serviceForm.control, name: "endDate" })
 
   function closeService() {
     setServiceOpen(false)
@@ -188,7 +190,8 @@ export function MemberRecordTables({
         <div>
           <h3 className="font-medium">Service record</h3>
           <p className="text-sm text-muted-foreground">
-            An appointment opens when this user is assigned and closes when they are removed.
+            An appointment opens when this user is assigned. Setting an end date (or removing the
+            assignment) signs them off that vessel.
           </p>
         </div>
         <DataTable
@@ -206,25 +209,25 @@ export function MemberRecordTables({
             },
             {
               header: "Role",
-              width: "w-32",
+              width: "min-w-32",
               value: (record) => ROLE_LABELS[record.role],
               cell: (record) => ROLE_LABELS[record.role],
             },
             {
               header: "From",
-              width: "w-36",
+              width: "min-w-36",
               value: (record) => record.startDate,
               cell: (record) => formatRecordDate(record.startDate),
             },
             {
               header: "To",
-              width: "w-36",
+              width: "min-w-36",
               value: (record) => record.endDate || "Present",
               cell: (record) => formatRecordDate(record.endDate),
             },
             {
               header: "Actions",
-              width: "w-40",
+              width: "min-w-40",
               align: "center",
               cell: (record) => (
                 <DataTableActions
@@ -249,7 +252,7 @@ export function MemberRecordTables({
           <DialogHeader>
             <DialogTitle>Edit service record</DialogTitle>
             <DialogDescription>
-              Update the vessel, role, and dates for this appointment.
+              Update the vessel, role, and dates. An end date removes this user from the vessel.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -299,6 +302,7 @@ export function MemberRecordTables({
                 <Input
                   id="member-service-start"
                   type="date"
+                  max={serviceEndDate || undefined}
                   aria-invalid={serviceForm.formState.errors.startDate !== undefined}
                   {...serviceForm.register("startDate")}
                 />
@@ -309,6 +313,7 @@ export function MemberRecordTables({
                 <Input
                   id="member-service-end"
                   type="date"
+                  min={serviceStartDate || undefined}
                   aria-invalid={serviceForm.formState.errors.endDate !== undefined}
                   {...serviceForm.register("endDate")}
                 />

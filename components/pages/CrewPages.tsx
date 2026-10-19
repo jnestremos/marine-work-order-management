@@ -90,7 +90,7 @@ export function CrewWorkOrdersPage() {
       {!member ? (
         <EmptyRole />
       ) : (
-        <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+        <section className="min-w-0 max-w-full rounded-xl border bg-card">
           <div className="border-b px-4 py-3">
             <h1 className="text-base font-semibold">Work orders</h1>
             <p className="text-sm text-muted-foreground">
@@ -105,13 +105,13 @@ export function CrewWorkOrdersPage() {
             columns={[
               {
                 header: "Work order",
-                width: "w-32",
+                width: "min-w-32",
                 value: (order) => order.code,
                 cell: (order) => order.code,
               },
               {
                 header: "Vessel",
-                width: "w-40",
+                width: "min-w-40",
                 value: (order) =>
                   vesselList.find((vessel) => vessel.id === order.vesselId)?.name ?? "",
                 cell: (order) =>
@@ -129,7 +129,7 @@ export function CrewWorkOrdersPage() {
               },
               {
                 header: "Status",
-                width: "w-32",
+                width: "min-w-32",
                 value: (order) => WORK_ORDER_STATUS_LABELS[order.status],
                 cell: (order) => (
                   <Badge variant={order.status}>{WORK_ORDER_STATUS_LABELS[order.status]}</Badge>
@@ -137,7 +137,7 @@ export function CrewWorkOrdersPage() {
               },
               {
                 header: "Actions",
-                width: "w-72",
+                width: "min-w-72",
                 align: "center",
                 cell: (order) => (
                   <DataTableActions
@@ -271,7 +271,7 @@ export function CrewVesselsPage() {
       {!member ? (
         <EmptyRole />
       ) : (
-        <section className="min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto">
+        <section className="min-w-0 max-w-full rounded-xl border bg-card">
           <div className="border-b px-4 py-3">
             <h1 className="text-base font-semibold">Vessel assignments</h1>
             <p className="text-sm text-muted-foreground">
@@ -292,7 +292,7 @@ export function CrewVesselsPage() {
               },
               {
                 header: "Status",
-                width: "w-32",
+                width: "min-w-32",
                 value: (vessel) => (vessel.active ? "Active" : "Inactive"),
                 cell: (vessel) => (
                   <Badge variant={vessel.active ? "active" : "inactive"}>

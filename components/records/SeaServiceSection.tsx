@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Controller, useForm } from "react-hook-form"
+import { Controller, useForm, useWatch } from "react-hook-form"
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { DataTable, DataTableActions, type DataTableAction } from "@/components/admin/DataTable"
 import { EmptyRole } from "@/components/views/EmptyRole"
@@ -108,6 +108,8 @@ export function SeaServiceSection({
     resolver: zodResolver(seaServiceFormSchema),
     defaultValues: emptyVoyage,
   })
+  const signOnDate = useWatch({ control: form.control, name: "signOnDate" })
+  const signOffDate = useWatch({ control: form.control, name: "signOffDate" })
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
     ? records.filter((record) => {
@@ -221,7 +223,7 @@ export function SeaServiceSection({
       className={
         embedded
           ? "flex min-w-0 flex-col gap-2"
-          : "min-w-0 max-w-full rounded-xl border bg-card max-md:overflow-x-auto"
+          : "min-w-0 max-w-full rounded-xl border bg-card"
       }
     >
       {embedded ? (
@@ -278,6 +280,7 @@ export function SeaServiceSection({
             ? [
                 {
                   header: "User",
+                  width: "min-w-36",
                   cellClassName: "font-medium",
                   value: (record: SeaService) => {
                     const owner = members.find((item) => item.id === record.memberId)
@@ -292,41 +295,44 @@ export function SeaServiceSection({
             : []),
           {
             header: "Vessel",
+            width: "min-w-32",
             cellClassName: showUser ? undefined : "font-medium",
             value: (record) => vesselName(vessels, record.vesselId),
             cell: (record) => vesselName(vessels, record.vesselId),
           },
           {
             header: "Role",
-            width: "w-32",
+            width: "min-w-32",
             value: (record) => ROLE_LABELS[record.role],
             cell: (record) => ROLE_LABELS[record.role],
           },
           {
             header: "Sign on",
-            width: "w-36",
+            width: "min-w-36",
             value: (record) => record.signOnDate,
             cell: (record) => formatRecordDate(record.signOnDate),
           },
           {
             header: "Sign-on port",
+            width: "min-w-36",
             value: (record) => record.signOnPort,
             cell: (record) => record.signOnPort,
           },
           {
             header: "Sign off",
-            width: "w-36",
+            width: "min-w-36",
             value: (record) => record.signOffDate,
             cell: (record) => formatRecordDate(record.signOffDate),
           },
           {
             header: "Sign-off port",
+            width: "min-w-36",
             value: (record) => record.signOffPort,
             cell: (record) => record.signOffPort,
           },
           {
             header: "Status",
-            width: "w-32",
+            width: "min-w-32",
             value: (record) => SEA_SERVICE_STATUS_LABELS[record.status],
             cell: (record) => (
               <Badge variant={record.status}>{SEA_SERVICE_STATUS_LABELS[record.status]}</Badge>
@@ -334,7 +340,7 @@ export function SeaServiceSection({
           },
           {
             header: "Actions",
-            width: "w-72",
+            width: "min-w-72",
             align: "center",
             cell: (record) => {
               const name = vesselName(vessels, record.vesselId) || "this vessel"
@@ -504,6 +510,7 @@ export function SeaServiceSection({
                 <Input
                   id="sea-service-on-date"
                   type="date"
+                  max={signOffDate || undefined}
                   aria-invalid={form.formState.errors.signOnDate !== undefined}
                   {...form.register("signOnDate")}
                 />
@@ -529,6 +536,7 @@ export function SeaServiceSection({
                 <Input
                   id="sea-service-off-date"
                   type="date"
+                  min={signOnDate || undefined}
                   aria-invalid={form.formState.errors.signOffDate !== undefined}
                   {...form.register("signOffDate")}
                 />

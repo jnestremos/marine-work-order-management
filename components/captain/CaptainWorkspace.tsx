@@ -162,7 +162,7 @@ function VesselOrders({
   }
 
   return (
-    <section className="min-w-0 max-w-full rounded-lg border max-md:overflow-x-auto">
+    <section className="min-w-0 max-w-full rounded-lg border">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b px-4 py-3 md:flex md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold">{vesselName}</h2>
@@ -202,7 +202,7 @@ function VesselOrders({
         columns={[
           {
             header: "Work order",
-            width: "w-32",
+            width: "min-w-32",
             value: (order) => order.code,
             cell: (order) => order.code,
           },
@@ -218,7 +218,7 @@ function VesselOrders({
           },
           {
             header: "Crew",
-            width: "w-40",
+            width: "min-w-40",
             value: (order) => {
               const member = members.find((item) => item.id === order.assigneeId)
               return member ? memberName(member) : ""
@@ -230,7 +230,7 @@ function VesselOrders({
           },
           {
             header: "Status",
-            width: "w-32",
+            width: "min-w-32",
             value: (order) => WORK_ORDER_STATUS_LABELS[order.status],
             cell: (order) => (
               <Badge variant={order.status}>{WORK_ORDER_STATUS_LABELS[order.status]}</Badge>
@@ -238,7 +238,7 @@ function VesselOrders({
           },
           {
             header: "Actions",
-            width: "w-80",
+            width: "min-w-80",
             align: "center",
             cell: (order) => {
               const actions: DataTableAction[] = [

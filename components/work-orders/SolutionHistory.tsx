@@ -48,13 +48,13 @@ export function SolutionHistory({ solutions }: { solutions: WorkOrderSolution[] 
           },
           {
             header: "Date posted",
-            width: "w-44",
+            width: "min-w-44",
             value: (solution) => solution.postedAt,
             cell: (solution) => formatPostedAt(solution.postedAt),
           },
           {
             header: "Status",
-            width: "w-32",
+            width: "min-w-32",
             value: (solution) => SOLUTION_STATUS_LABELS[solution.status],
             cell: (solution) => (
               <Badge variant={solution.status}>{SOLUTION_STATUS_LABELS[solution.status]}</Badge>

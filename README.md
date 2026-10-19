@@ -183,7 +183,7 @@ erDiagram
 ## Database security
 
 - **RLS** on all public tables; access uses the mock session headers via `private.set_marine_session` (`pgrst.db_pre_request`).
-- **Triggers** enforce duplicates, assignment eligibility, deactivation guards, work-order codes (`WO-1001+`), and solution review.
+- **Triggers** enforce duplicates, assignment eligibility, service-record open/close with unassign on end date, deactivation guards, work-order codes (`WO-1001+`), and solution review.
 - The browser uses the **publishable** key only; never ship the secret key as `NEXT_PUBLIC_*`.
 
 ## Roles

@@ -33,6 +33,7 @@ export function useMarineMutations() {
     }) =>
       run(() => api.saveUser(input), [
         marineKeys.members(session),
+        marineKeys.assignments(session),
         marineKeys.serviceRecords(session),
         marineKeys.sessionChoices(session),
       ]),
@@ -49,16 +50,20 @@ export function useMarineMutations() {
     setVesselActive: (vesselId: string, active: boolean) =>
       run(() => api.setVesselActive(vesselId, active), [
         marineKeys.vessels(session),
+        marineKeys.assignments(session),
+        marineKeys.serviceRecords(session),
         marineKeys.sessionChoices(session),
       ]),
     addAssignment: (input: { memberId: string; vesselId: string }) =>
       run(() => api.addAssignment(input), [
         marineKeys.assignments(session),
+        marineKeys.serviceRecords(session),
         marineKeys.sessionChoices(session),
       ]),
     removeAssignment: (memberId: string, vesselId: string) =>
       run(() => api.removeAssignment(memberId, vesselId), [
         marineKeys.assignments(session),
+        marineKeys.serviceRecords(session),
         marineKeys.sessionChoices(session),
       ]),
     saveSeaService: (input: {
