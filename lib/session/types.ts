@@ -32,6 +32,8 @@ export type ServiceRecord = {
   endDate: string
 }
 
+export type SeaServiceStatus = "pending" | "accepted" | "rejected"
+
 export type SeaService = {
   id: string
   memberId: string
@@ -41,6 +43,15 @@ export type SeaService = {
   signOnPort: string
   signOffDate: string
   signOffPort: string
+  status: SeaServiceStatus
+}
+
+export const SEA_SERVICE_STATUSES = ["pending", "accepted", "rejected"] as const satisfies readonly SeaServiceStatus[]
+
+export const SEA_SERVICE_STATUS_LABELS: Record<SeaServiceStatus, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  rejected: "Rejected",
 }
 
 export type SessionState = {

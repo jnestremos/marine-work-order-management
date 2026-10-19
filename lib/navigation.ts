@@ -27,6 +27,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { href: "/admin/users", label: "Users", icon: UsersIcon },
     { href: "/admin/vessels", label: "Vessels", icon: ShipIcon },
     { href: "/admin/assignments", label: "Crew assignments", icon: UserPlusIcon },
+    { href: "/admin/sea-service", label: "Sea service history", icon: AnchorIcon },
     { href: "/admin/profile", label: "Profile settings", icon: SettingsIcon },
   ],
   captain: [

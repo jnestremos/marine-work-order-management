@@ -17,7 +17,13 @@ import {
 } from "@/lib/admin/rules"
 import { useSessionStore } from "@/lib/session/store"
 import { useWorkOrders } from "@/components/work-orders/WorkOrderProvider"
-import { memberName, type Role, type SeaService, type ServiceRecord } from "@/lib/session/types"
+import {
+  closeAssignedServiceRecords,
+  closeServiceRecords,
+  openServiceRecord,
+  todayIsoDate,
+} from "@/lib/records/service"
+import { memberName, type Role, type ServiceRecord } from "@/lib/session/types"
 
 function replaceMemberRecords<Record extends { id: string; memberId: string }>(
   current: Record[],
@@ -41,7 +47,6 @@ export function useAdminDirectory() {
     lastName: string
     role: Role
     serviceRecords: ServiceRecord[]
-    seaServices: SeaService[]
   }) {
     const users = directory.members.map((member) => ({
       id: member.id,
@@ -55,9 +60,6 @@ export function useAdminDirectory() {
     const serviceRecords = keepRecords
       ? replaceMemberRecords(directory.serviceRecords, memberId, input.serviceRecords)
       : directory.serviceRecords
-    const seaServices = keepRecords
-      ? replaceMemberRecords(directory.seaServices, memberId, input.seaServices)
-      : directory.seaServices
     if (input.id) {
       const existing = directory.members.find((member) => member.id === input.id)
       if (!existing) {
@@ -93,7 +95,6 @@ export function useAdminDirectory() {
             ? directory.assignments.filter((assignment) => assignment.memberId !== input.id)
             : directory.assignments,
         serviceRecords,
-        seaServices,
       })
       return null
     }
@@ -110,7 +111,6 @@ export function useAdminDirectory() {
         },
       ],
       serviceRecords,
-      seaServices,
     })
     return null
   }
@@ -184,6 +184,14 @@ export function useAdminDirectory() {
       assignments: active
         ? directory.assignments
         : withoutVesselAssignments(directory.assignments, vesselId),
+      serviceRecords: active
+        ? directory.serviceRecords
+        : closeAssignedServiceRecords(
+            directory.serviceRecords,
+            directory.assignments,
+            vesselId,
+            todayIsoDate(),
+          ),
     })
     return null
   }
@@ -201,22 +209,30 @@ export function useAdminDirectory() {
     if (captainMessage) {
       return captainMessage
     }
-    const vessel = directory.vessels.find((item) => item.id === input.vesselId)
-    if (vessel?.active) {
-      const activeMessage = captainActiveVesselBlock(directory, input.memberId, input.vesselId)
-      if (activeMessage) {
-        return activeMessage
-      }
+    const activeMessage = captainActiveVesselBlock(directory, input.memberId, input.vesselId)
+    if (activeMessage) {
+      return activeMessage
     }
     if (duplicateAssignment(directory.assignments, input.memberId, input.vesselId)) {
       return "This user is already assigned to this vessel"
     }
+    const member = directory.members.find((item) => item.id === input.memberId)
     setDirectory({
       ...directory,
       assignments: [
         ...directory.assignments,
         { memberId: input.memberId, vesselId: input.vesselId },
       ],
+      serviceRecords:
+        member && member.role !== "admin"
+          ? openServiceRecord(directory.serviceRecords, {
+              id: crypto.randomUUID(),
+              memberId: input.memberId,
+              vesselId: input.vesselId,
+              role: member.role,
+              startDate: todayIsoDate(),
+            })
+          : directory.serviceRecords,
     })
     return null
   }
@@ -226,6 +242,12 @@ export function useAdminDirectory() {
       ...directory,
       assignments: directory.assignments.filter(
         (assignment) => assignment.memberId !== memberId || assignment.vesselId !== vesselId,
+      ),
+      serviceRecords: closeServiceRecords(
+        directory.serviceRecords,
+        memberId,
+        vesselId,
+        todayIsoDate(),
       ),
     })
     return null

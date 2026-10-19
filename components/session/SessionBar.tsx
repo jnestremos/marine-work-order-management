@@ -7,7 +7,7 @@ import { VesselSelect } from "@/components/session/VesselSelect"
 
 export function SessionBar() {
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background px-4 py-3">
+    <header className="z-40 w-full shrink-0 border-b bg-background px-4 py-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <VesselSelect />
         <RoleSelect />

@@ -5,6 +5,7 @@ import { CheckboxGroup } from "@base-ui/react/checkbox-group"
 import {
   BanIcon,
   CircleCheckIcon,
+  CircleXIcon,
   ListFilterIcon,
   PencilIcon,
   Trash2Icon,
@@ -39,6 +40,8 @@ const actionIcons: Record<string, LucideIcon> = {
   Edit: PencilIcon,
   Deactivate: BanIcon,
   Activate: CircleCheckIcon,
+  Accept: CircleCheckIcon,
+  Reject: CircleXIcon,
   Remove: Trash2Icon,
 }
 
@@ -48,11 +51,17 @@ export type DataTableAction = {
   variant?: "outline" | "destructive" | "success"
 }
 
-export function DataTableActions({ actions }: { actions: DataTableAction[] }) {
+export function DataTableActions({
+  actions,
+  fit = false,
+}: {
+  actions: DataTableAction[]
+  fit?: boolean
+}) {
   const single = actions.length === 1
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className={cn("grid grid-cols-2 gap-2", fit && "grid-cols-1")}>
       {actions.map((action, index) => {
         const Icon = actionIcons[action.label]
         return (
@@ -64,6 +73,7 @@ export function DataTableActions({ actions }: { actions: DataTableAction[] }) {
             className={cn(
               "w-full",
               single && "col-span-2 mx-auto max-w-[calc(50%-0.25rem)]",
+              fit && "w-fit max-w-full",
             )}
             onClick={action.onClick}
           >
@@ -92,6 +102,9 @@ const CHOICE_ORDER = [
   "Open",
   "In Progress",
   "Done",
+  "Pending",
+  "Accepted",
+  "Rejected",
 ]
 
 function columnText<Row>(column: DataTableColumn<Row>, row: Row) {
@@ -227,7 +240,6 @@ export function DataTable<Row>({
   minWidth,
   isSelected,
   containerClassName,
-  stickyHeader,
 }: {
   columns: DataTableColumn<Row>[]
   rows: Row[]
@@ -236,7 +248,6 @@ export function DataTable<Row>({
   minWidth: string
   isSelected?: (row: Row) => boolean
   containerClassName?: string
-  stickyHeader?: boolean
 }) {
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [excludedChoices, setExcludedChoices] = useState<Record<string, string[]>>({})
@@ -269,8 +280,11 @@ export function DataTable<Row>({
   }
 
   return (
-    <Table className={cn("table-fixed", minWidth)} containerClassName={containerClassName}>
-      <TableHeader className={stickyHeader ? "sticky top-0 z-10 [&_th]:bg-popover" : undefined}>
+    <Table
+      className={cn("table-fixed border-separate border-spacing-0", minWidth)}
+      containerClassName={containerClassName}
+    >
+      <TableHeader className="sticky top-0 z-10 [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:border-b [&_th]:bg-card">
         <TableRow>
           {columns.map((column) => (
             <TableHead

@@ -108,7 +108,7 @@ export function AssignmentsSection({
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-card">
+    <section className="rounded-xl border bg-card">
       <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
         <div>
           <h2 className="text-base font-semibold">Crew assignments</h2>
@@ -185,6 +185,7 @@ export function AssignmentsSection({
                 actions={[
                   {
                     label: "Remove",
+                    variant: "destructive",
                     onClick: () => {
                       const member = members.find((item) => item.id === assignment.memberId)
                       const vessel = vessels.find((item) => item.id === assignment.vesselId)

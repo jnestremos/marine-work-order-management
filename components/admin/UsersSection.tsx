@@ -6,6 +6,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DataTable, DataTableActions } from "@/components/admin/DataTable";
 import { MemberRecordTables } from "@/components/admin/MemberRecordTables";
+import { SeaServiceSection } from "@/components/records/SeaServiceSection";
 import { RecordStatus } from "@/components/admin/RecordStatus";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +35,6 @@ import {
 	type Assignment,
 	type Member,
 	type Role,
-	type SeaService,
 	type ServiceRecord,
 	type Vessel,
 } from "@/lib/session/types";
@@ -57,7 +57,6 @@ export function UsersSection({
 	vessels,
 	assignments,
 	serviceRecords,
-	seaServices,
 	orders,
 	onSave,
 	onSetActive,
@@ -66,7 +65,6 @@ export function UsersSection({
 	vessels: Vessel[];
 	assignments: Assignment[];
 	serviceRecords: ServiceRecord[];
-	seaServices: SeaService[];
 	orders: WorkOrder[];
 	onSave: (input: {
 		id?: string;
@@ -74,7 +72,6 @@ export function UsersSection({
 		lastName: string;
 		role: Role;
 		serviceRecords: ServiceRecord[];
-		seaServices: SeaService[];
 	}) => string | null;
 	onSetActive: (memberId: string, active: boolean) => string | null;
 }) {
@@ -89,7 +86,6 @@ export function UsersSection({
 	} | null>(null);
 	const [query, setQuery] = useState("");
 	const [serviceDrafts, setServiceDrafts] = useState<ServiceRecord[]>([]);
-	const [seaDrafts, setSeaDrafts] = useState<SeaService[]>([]);
 	const normalizedQuery = query.trim().toLowerCase();
 	const visibleMembers = normalizedQuery
 		? members.filter(
@@ -117,14 +113,12 @@ export function UsersSection({
 		setOpen(false);
 		setEditingId(null);
 		setServiceDrafts([]);
-		setSeaDrafts([]);
 		reset(emptyUserForm());
 	}
 
 	function openAdd() {
 		setEditingId(null);
 		setServiceDrafts([]);
-		setSeaDrafts([]);
 		reset(emptyUserForm());
 		setOpen(true);
 	}
@@ -133,11 +127,6 @@ export function UsersSection({
 		setEditingId(member.id);
 		setServiceDrafts(
 			serviceRecords
-				.filter((record) => record.memberId === member.id)
-				.map((record) => ({ ...record })),
-		);
-		setSeaDrafts(
-			seaServices
 				.filter((record) => record.memberId === member.id)
 				.map((record) => ({ ...record })),
 		);
@@ -156,7 +145,6 @@ export function UsersSection({
 			lastName: values.lastName,
 			role: values.role,
 			serviceRecords: serviceDrafts,
-			seaServices: seaDrafts,
 		});
 		if (message) {
 			setError("root", { message });
@@ -166,7 +154,7 @@ export function UsersSection({
 	}
 
 	return (
-		<section className="overflow-hidden rounded-xl border bg-card">
+			<section className="rounded-xl border bg-card">
 			<div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:items-center md:justify-between border-b px-4 py-3">
 				<div>
 					<h2 className="text-base font-semibold">Users</h2>
@@ -298,7 +286,7 @@ export function UsersSection({
 				<DialogContent
 					className={
 						showRecords
-							? "max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-5xl"
+							? "max-h-[calc(100dvh-2rem)] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-[min(64rem,calc(100%-2rem))]"
 							: "sm:max-w-md"
 					}
 				>
@@ -389,10 +377,11 @@ export function UsersSection({
 						<MemberRecordTables
 							vessels={vessels}
 							serviceRecords={serviceDrafts}
-							seaServices={seaDrafts}
 							onServiceRecordsChange={setServiceDrafts}
-							onSeaServicesChange={setSeaDrafts}
 						/>
+					) : null}
+					{showRecords && editingId ? (
+						<SeaServiceSection scope="directory" memberId={editingId} embedded />
 					) : null}
 					<DialogFooter>
 						<Button type="button" variant="outline" onClick={closeModal}>

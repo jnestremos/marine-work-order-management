@@ -1,5 +1,5 @@
-import { SeaServiceSection } from "@/components/records/RecordSections"
+import { SeaServiceSection } from "@/components/records/SeaServiceSection"
 
 export default function Page() {
-  return <SeaServiceSection />
+  return <SeaServiceSection scope="member" />
 }

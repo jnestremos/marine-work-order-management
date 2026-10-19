@@ -22,7 +22,7 @@ export function CrewWorkOrdersPage() {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-card">
+    <section className="rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
         <h1 className="text-base font-semibold">Work orders</h1>
         <p className="text-sm text-muted-foreground">
@@ -90,7 +90,7 @@ export function CrewVesselsPage() {
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border bg-card">
+    <section className="rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
         <h1 className="text-base font-semibold">Vessel assignments</h1>
         <p className="text-sm text-muted-foreground">

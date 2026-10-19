@@ -79,6 +79,7 @@ export const marineFixture: MarineFixture = {
       signOnPort: "Singapore",
       signOffDate: "2024-09-12",
       signOffPort: "Rotterdam",
+      status: "accepted",
     },
     {
       id: "sea_blake_retired",
@@ -89,6 +90,7 @@ export const marineFixture: MarineFixture = {
       signOnPort: "Manila",
       signOffDate: "2022-07-18",
       signOffPort: "Busan",
+      status: "accepted",
     },
     {
       id: "sea_casey_horizon",
@@ -99,6 +101,7 @@ export const marineFixture: MarineFixture = {
       signOnPort: "Manila",
       signOffDate: "2025-08-19",
       signOffPort: "Singapore",
+      status: "accepted",
     },
     {
       id: "sea_drew_aurora",
@@ -109,6 +112,7 @@ export const marineFixture: MarineFixture = {
       signOnPort: "Dubai",
       signOffDate: "2025-06-30",
       signOffPort: "Mumbai",
+      status: "accepted",
     },
     {
       id: "sea_harper_horizon",
@@ -119,6 +123,7 @@ export const marineFixture: MarineFixture = {
       signOnPort: "Hong Kong",
       signOffDate: "2025-09-01",
       signOffPort: "Kaohsiung",
+      status: "accepted",
     },
   ],
 }

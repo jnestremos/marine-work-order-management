@@ -334,6 +334,16 @@ describe("captainActiveVesselBlock", () => {
     expect(captainActiveVesselBlock(marineFixture, "member_casey", "vessel_aurora")).toBeNull()
   })
 
+  it("rejects an inactive vessel while the captain has an active vessel", () => {
+    expect(captainActiveVesselBlock(marineFixture, "member_blake", "vessel_retired")).toBe(
+      "Blake Ortiz is already assigned to MV Horizon",
+    )
+  })
+
+  it("allows an inactive vessel when the captain has no active vessel", () => {
+    expect(captainActiveVesselBlock(marineFixture, "member_gina", "vessel_retired")).toBeNull()
+  })
+
   it("ignores an inactive vessel the captain is also assigned to", () => {
     const directory: MarineFixture = {
       ...marineFixture,

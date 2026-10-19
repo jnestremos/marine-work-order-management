@@ -15,7 +15,6 @@ export function AdminUsersPage() {
       vessels={directory.vessels}
       assignments={directory.assignments}
       serviceRecords={directory.serviceRecords}
-      seaServices={directory.seaServices}
       orders={orders}
       onSave={saveUser}
       onSetActive={setMemberActive}
@@ -24,7 +23,7 @@ export function AdminUsersPage() {
 }
 
 export function AdminVesselsPage() {
-  const { directory, saveVessel, setVesselActive } = useAdminDirectory()
+  const { directory, saveVessel, setVesselActive, removeAssignment } = useAdminDirectory()
   const { orders } = useWorkOrders()
   return (
     <VesselsSection
@@ -34,6 +33,7 @@ export function AdminVesselsPage() {
       orders={orders}
       onSave={saveVessel}
       onSetActive={setVesselActive}
+      onRemoveAssignment={removeAssignment}
     />
   )
 }
