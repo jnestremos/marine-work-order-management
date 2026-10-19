@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { DataTable, DataTableActions, type DataTableAction } from "@/components/admin/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -113,6 +114,7 @@ function VesselOrders({
   const [rejectNote, setRejectNote] = useState("")
   const [rejectError, setRejectError] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
+  const [attestId, setAttestId] = useState<string | null>(null)
   const vesselOrders = orders.filter((order) => order.vesselId === vesselId)
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
@@ -274,7 +276,7 @@ function VesselOrders({
                     label: "Attest",
                     variant: "success",
                     onClick: () => {
-                      void onReview(order.id, "accepted")
+                      setAttestId(order.id)
                     },
                   },
                   {
@@ -287,14 +289,6 @@ function VesselOrders({
                     },
                   },
                 )
-              }
-              if (order.status === "accepted" || order.status === "rejected") {
-                actions.push({
-                  label: "Close",
-                  onClick: () => {
-                    void onReview(order.id, "closed")
-                  },
-                })
               }
               return <DataTableActions inline actions={actions} />
             },
@@ -395,6 +389,29 @@ function VesselOrders({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={attestId !== null}
+        title="Attest work order?"
+        description={
+          attestId
+            ? `Mark ${vesselOrders.find((order) => order.id === attestId)?.code ?? "this work order"} as accepted?`
+            : "Mark this work order as accepted?"
+        }
+        confirmLabel="Attest"
+        confirmVariant="success"
+        onOpenChange={(next) => {
+          if (!next) {
+            setAttestId(null)
+          }
+        }}
+        onConfirm={() => {
+          const id = attestId
+          setAttestId(null)
+          if (id) {
+            void attestOrder(id)
+          }
+        }}
+      />
     </section>
   )
 }

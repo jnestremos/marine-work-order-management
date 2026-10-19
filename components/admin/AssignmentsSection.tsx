@@ -53,6 +53,7 @@ export function AssignmentsSection({
     title: string
     description: string
     confirmLabel: string
+    confirmVariant?: "default" | "destructive" | "success"
     run: () => void
   } | null>(null)
   const [query, setQuery] = useState("")
@@ -98,13 +99,32 @@ export function AssignmentsSection({
     setOpen(true)
   }
 
-  async function onValid(values: AssignmentFormValues) {
+  async function persist(values: AssignmentFormValues) {
     const message = await onAdd(values)
     if (message) {
       setError("root", { message })
       return
     }
     closeModal()
+  }
+
+  function requestSave() {
+    clearErrors("root")
+    void handleSubmit((values) => {
+      const member = members.find((item) => item.id === values.memberId)
+      const vessel = vessels.find((item) => item.id === values.vesselId)
+      const user = member ? memberName(member) : "this user"
+      const vesselName = vessel?.name ?? "this vessel"
+      setPending({
+        title: "Add assignment?",
+        description: `Assign ${user} to ${vesselName}?`,
+        confirmLabel: "Add assignment",
+        confirmVariant: "success",
+        run: () => {
+          void persist(values)
+        },
+      })
+    }, () => clearErrors("root"))()
   }
 
   return (
@@ -195,6 +215,7 @@ export function AssignmentsSection({
                         title: "Remove assignment",
                         description: `Remove ${user} from ${vesselName}?`,
                         confirmLabel: "Remove",
+                        confirmVariant: "destructive",
                         run: () => {
                           void onRemove(assignment.memberId, assignment.vesselId).then(setActionError)
                         },
@@ -226,7 +247,10 @@ export function AssignmentsSection({
           </DialogHeader>
           <form
             id="assignment-form"
-            onSubmit={handleSubmit(onValid, () => clearErrors("root"))}
+            onSubmit={(event) => {
+              event.preventDefault()
+              requestSave()
+            }}
             className="flex flex-col gap-3"
           >
             <div className="flex flex-col gap-1">
@@ -302,7 +326,9 @@ export function AssignmentsSection({
               <Button type="button" variant="outline" onClick={closeModal}>
                 Cancel
               </Button>
-              <Button type="submit">Add assignment</Button>
+              <Button type="button" variant="success" onClick={requestSave}>
+                Add assignment
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -312,6 +338,7 @@ export function AssignmentsSection({
         title={pending?.title ?? ""}
         description={pending?.description ?? ""}
         confirmLabel={pending?.confirmLabel ?? "Confirm"}
+        confirmVariant={pending?.confirmVariant}
         onOpenChange={(next) => {
           if (!next) {
             setPending(null)

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { HistoryIcon } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -73,6 +74,7 @@ export function WorkOrderDialog({
   reviewError?: string | null
 }) {
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<"close" | "save" | "attest" | null>(null)
   const crewItems = Object.fromEntries(crew.map((member) => [member.id, member.name]))
   const editable = !readOnly && Boolean(submitLabel)
   const canReview = order?.status === "done" && Boolean(onAttest || onReject)
@@ -95,6 +97,7 @@ export function WorkOrderDialog({
   useEffect(() => {
     if (!open) {
       setHistoryOpen(false)
+      setConfirmAction(null)
     }
   }, [open])
 
@@ -116,6 +119,32 @@ export function WorkOrderDialog({
     if (showCrew && crew.length === 0) {
       clearErrors("assigneeId")
       setError("root", { message: "This vessel has no active crew" })
+    }
+  }
+
+  function requestSave() {
+    clearErrors("root")
+    void handleSubmit(
+      () => {
+        setConfirmAction("save")
+      },
+      onInvalid,
+    )()
+  }
+
+  async function confirmPending() {
+    const action = confirmAction
+    setConfirmAction(null)
+    if (action === "close") {
+      onCloseWorkOrder?.()
+      return
+    }
+    if (action === "attest") {
+      onAttest?.()
+      return
+    }
+    if (action === "save") {
+      await handleSubmit(onValid, onInvalid)()
     }
   }
 
@@ -232,86 +261,117 @@ export function WorkOrderDialog({
     </>
   )
 
+  const footerActions = (
+    <>
+      <Button type="button" variant="outline" onClick={close}>
+        Cancel
+      </Button>
+      {canReview && onReject ? (
+        <Button type="button" variant="destructive" onClick={onReject}>
+          Reject
+        </Button>
+      ) : null}
+      {canReview && onAttest ? (
+        <Button type="button" variant="success" onClick={() => setConfirmAction("attest")}>
+          Attest
+        </Button>
+      ) : null}
+      {canCloseWorkOrder ? (
+        <Button type="button" variant="destructive" onClick={() => setConfirmAction("close")}>
+          Close work order
+        </Button>
+      ) : null}
+      {editable && submitLabel ? (
+        <Button type="button" variant="success" onClick={requestSave}>
+          {submitLabel}
+        </Button>
+      ) : null}
+    </>
+  )
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) {
-          close()
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) {
+            close()
+          }
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{order ? "View work order" : "Add work order"}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
+          {editable ? (
+            <form
+              id="work-order-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                requestSave()
+              }}
+              className="flex min-w-0 flex-col gap-3"
+            >
+              {fields}
+              <DialogFooter>{footerActions}</DialogFooter>
+            </form>
+          ) : (
+            <div className="flex min-w-0 flex-col gap-3">
+              {fields}
+              <DialogFooter>{footerActions}</DialogFooter>
+            </div>
+          )}
+          <SolutionHistoryDialog
+            code={order?.code ?? ""}
+            title={order?.title ?? ""}
+            solutions={order?.solutions ?? []}
+            open={historyOpen && order !== null}
+            onOpenChange={(next) => {
+              if (!next) {
+                setHistoryOpen(false)
+              }
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={
+          confirmAction === "close"
+            ? "Close work order?"
+            : confirmAction === "attest"
+              ? "Attest work order?"
+              : order
+                ? "Save work order?"
+                : "Add work order?"
         }
-      }}
-    >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{order ? "View work order" : "Add work order"}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {editable ? (
-          <form
-            id="work-order-form"
-            onSubmit={handleSubmit(onValid, onInvalid)}
-            className="flex min-w-0 flex-col gap-3"
-          >
-            {fields}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={close}>
-                Cancel
-              </Button>
-              <Button type="submit">{submitLabel}</Button>
-              {canReview && onReject ? (
-                <Button type="button" variant="destructive" onClick={onReject}>
-                  Reject
-                </Button>
-              ) : null}
-              {canReview && onAttest ? (
-                <Button type="button" variant="success" onClick={onAttest}>
-                  Attest
-                </Button>
-              ) : null}
-              {canCloseWorkOrder ? (
-                <Button type="button" onClick={onCloseWorkOrder}>
-                  Close work order
-                </Button>
-              ) : null}
-            </DialogFooter>
-          </form>
-        ) : (
-          <div className="flex min-w-0 flex-col gap-3">
-            {fields}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={close}>
-                {canCloseWorkOrder ? "Dismiss" : "Close"}
-              </Button>
-              {canReview && onReject ? (
-                <Button type="button" variant="destructive" onClick={onReject}>
-                  Reject
-                </Button>
-              ) : null}
-              {canReview && onAttest ? (
-                <Button type="button" variant="success" onClick={onAttest}>
-                  Attest
-                </Button>
-              ) : null}
-              {canCloseWorkOrder ? (
-                <Button type="button" onClick={onCloseWorkOrder}>
-                  Close work order
-                </Button>
-              ) : null}
-            </DialogFooter>
-          </div>
-        )}
-        <SolutionHistoryDialog
-          code={order?.code ?? ""}
-          title={order?.title ?? ""}
-          solutions={order?.solutions ?? []}
-          open={historyOpen && order !== null}
-          onOpenChange={(next) => {
-            if (!next) {
-              setHistoryOpen(false)
-            }
-          }}
-        />
-      </DialogContent>
-    </Dialog>
+        description={
+          confirmAction === "close"
+            ? "Closed work orders leave the crew queue and no longer block crew changes. This cannot be undone from here."
+            : confirmAction === "attest"
+              ? "Mark this work order as accepted? The crew solution will be approved."
+              : order
+                ? "Save your changes to this work order?"
+                : "Create this work order?"
+        }
+        confirmLabel={
+          confirmAction === "close"
+            ? "Close work order"
+            : confirmAction === "attest"
+              ? "Attest"
+              : (submitLabel ?? "Save")
+        }
+        confirmVariant={confirmAction === "close" ? "destructive" : "success"}
+        onConfirm={() => {
+          void confirmPending()
+        }}
+        onOpenChange={(next) => {
+          if (!next) {
+            setConfirmAction(null)
+          }
+        }}
+      />
+    </>
   )
 }

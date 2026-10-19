@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm, useWatch } from "react-hook-form"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { Button } from "@/components/ui/button"
 import {
@@ -142,6 +143,7 @@ export function MemberRecordTables({
   )
   const [serviceOpen, setServiceOpen] = useState(false)
   const [serviceEditingId, setServiceEditingId] = useState<string | null>(null)
+  const [pendingSave, setPendingSave] = useState(false)
   const serviceForm = useForm<ServiceRecordFormValues>({
     resolver: zodResolver(serviceRecordFormSchema),
     defaultValues: emptyServiceRecord,
@@ -152,6 +154,7 @@ export function MemberRecordTables({
   function closeService() {
     setServiceOpen(false)
     setServiceEditingId(null)
+    setPendingSave(false)
     serviceForm.reset(emptyServiceRecord)
     serviceForm.clearErrors()
   }
@@ -168,7 +171,7 @@ export function MemberRecordTables({
     setServiceOpen(true)
   }
 
-  function saveService(values: ServiceRecordFormValues) {
+  function persistService(values: ServiceRecordFormValues) {
     if (!vessels.some((vessel) => vessel.id === values.vesselId)) {
       serviceForm.setError("root", { message: "Vessel is required" })
       return
@@ -182,6 +185,13 @@ export function MemberRecordTables({
       ),
     )
     closeService()
+  }
+
+  function requestSaveService() {
+    serviceForm.clearErrors("root")
+    void serviceForm.handleSubmit((values) => {
+      setPendingSave(true)
+    }, () => serviceForm.clearErrors("root"))()
   }
 
   return (
@@ -258,8 +268,9 @@ export function MemberRecordTables({
           <form
             id="member-service-record-form"
             onSubmit={(event) => {
+              event.preventDefault()
               event.stopPropagation()
-              void serviceForm.handleSubmit(saveService, () => serviceForm.clearErrors("root"))(event)
+              requestSaveService()
             }}
             className="flex flex-col gap-3"
           >
@@ -329,11 +340,29 @@ export function MemberRecordTables({
               <Button type="button" variant="outline" onClick={closeService}>
                 Cancel
               </Button>
-              <Button type="submit">Save record</Button>
+              <Button type="button" variant="success" onClick={requestSaveService}>
+                Save record
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={pendingSave}
+        title="Save record?"
+        description="Save these service record changes? An end date removes this user from the vessel when you save the user."
+        confirmLabel="Save record"
+        confirmVariant="success"
+        onOpenChange={(next) => {
+          if (!next) {
+            setPendingSave(false)
+          }
+        }}
+        onConfirm={() => {
+          setPendingSave(false)
+          void serviceForm.handleSubmit(persistService, () => serviceForm.clearErrors("root"))()
+        }}
+      />
     </div>
   )
 }

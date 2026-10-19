@@ -1,5 +1,13 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 import { setSession } from "./helpers/session"
+
+async function confirmDialog(page: Page, title: string, confirmLabel: string) {
+  const dialog = page.getByRole("dialog").filter({
+    has: page.getByRole("heading", { name: title, exact: true }),
+  })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole("button", { name: confirmLabel, exact: true }).click()
+}
 
 test.describe("role navigation regression", () => {
   test("admin can open directory sections", async ({ page }) => {
@@ -113,6 +121,7 @@ test.describe("work order business process", () => {
     await dialog.locator("#work-order-crew").click()
     await page.getByRole("option", { name: "Casey Nguyen", exact: true }).click()
     await dialog.getByRole("button", { name: "Add work order" }).click()
+    await confirmDialog(page, "Add work order?", "Add work order")
     await expect(dialog).toBeHidden()
     await expect(page.getByText(title)).toBeVisible()
 
@@ -131,6 +140,7 @@ test.describe("work order business process", () => {
       "Completed the lifecycle check during regression.",
     )
     await dialog.getByRole("button", { name: "Send solution" }).click()
+    await confirmDialog(page, "Send solution?", "Send solution")
     await expect(dialog).toBeHidden({ timeout: 20_000 })
 
     await setSession(page, {
@@ -157,6 +167,7 @@ test.describe("work order business process", () => {
     await expect(viewDialog.getByRole("button", { name: "Attest", exact: true })).toBeVisible()
     await expect(viewDialog.getByRole("button", { name: "Reject", exact: true })).toBeVisible()
     await viewDialog.getByRole("button", { name: "Attest", exact: true }).click()
+    await confirmDialog(page, "Attest work order?", "Attest")
     await expect(viewDialog).toBeHidden({ timeout: 20_000 })
     await expect(
       page.locator("tr", { hasText: title }).getByRole("button", { name: "Attest", exact: true }),
@@ -227,9 +238,11 @@ test.describe("admin directory process", () => {
     await expect(recordDialog.locator("#member-service-end")).toHaveAttribute("min", startDate)
     await recordDialog.locator("#member-service-end").fill(startDate)
     await recordDialog.getByRole("button", { name: "Save record" }).click()
+    await confirmDialog(page, "Save record?", "Save record")
     await expect(recordDialog).toBeHidden()
 
     await userDialog.getByRole("button", { name: "Save user" }).click()
+    await confirmDialog(page, "Save user?", "Save user")
     await expect(userDialog).toBeHidden({ timeout: 20_000 })
 
     await page.goto("/admin/assignments")
@@ -244,6 +257,7 @@ test.describe("admin directory process", () => {
     await assignDialog.locator("#assignment-vessel").click()
     await page.getByRole("option", { name: "MV Horizon", exact: true }).click()
     await assignDialog.getByRole("button", { name: "Add assignment" }).click()
+    await confirmDialog(page, "Add assignment?", "Add assignment")
     await expect(assignDialog).toBeHidden({ timeout: 20_000 })
     await expect(page.locator("tbody tr").filter({ hasText: "Ivan Brooks" })).toBeVisible()
   })

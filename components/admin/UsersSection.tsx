@@ -74,6 +74,7 @@ export function UsersSection({
 		title: string;
 		description: string;
 		confirmLabel: string;
+		confirmVariant?: "default" | "destructive" | "success";
 		run: () => void;
 	} | null>(null);
 	const [query, setQuery] = useState("");
@@ -130,7 +131,7 @@ export function UsersSection({
 		setOpen(true);
 	}
 
-	async function onValid(values: UserFormValues) {
+	async function persist(values: UserFormValues) {
 		const message = await onSave({
 			id: editingId ?? undefined,
 			firstName: values.firstName,
@@ -143,6 +144,24 @@ export function UsersSection({
 			return;
 		}
 		closeModal();
+	}
+
+	function requestSave() {
+		clearErrors("root");
+		void handleSubmit((values) => {
+			const name = `${values.firstName} ${values.lastName}`.trim() || "this user";
+			setPending({
+				title: editingId ? "Save user?" : "Add user?",
+				description: editingId
+					? `Save changes to ${name}?`
+					: `Create ${name} as ${ROLE_LABELS[values.role]}?`,
+				confirmLabel: editingId ? "Save user" : "Add user",
+				confirmVariant: "success",
+				run: () => {
+					void persist(values);
+				},
+			});
+		}, () => clearErrors("root"))();
 	}
 
 	return (
@@ -235,6 +254,7 @@ export function UsersSection({
 													? `Activate ${name}?`
 													: `Deactivate ${name}?`,
 												confirmLabel: nextActive ? "Activate" : "Deactivate",
+												confirmVariant: nextActive ? "success" : "destructive",
 												run: () => {
 													void onSetActive(member.id, nextActive).then(setActionError);
 												},
@@ -272,7 +292,10 @@ export function UsersSection({
 					</DialogHeader>
 					<form
 						id="user-form"
-						onSubmit={handleSubmit(onValid, () => clearErrors("root"))}
+						onSubmit={(event) => {
+							event.preventDefault();
+							requestSave();
+						}}
 						className="flex flex-col gap-3"
 					>
 						<div className="grid gap-3 sm:grid-cols-2">
@@ -361,7 +384,7 @@ export function UsersSection({
 						<Button type="button" variant="outline" onClick={closeModal}>
 							Cancel
 						</Button>
-						<Button type="submit" form="user-form">
+						<Button type="button" variant="success" form="user-form" onClick={requestSave}>
 							{editingId ? "Save user" : "Add user"}
 						</Button>
 					</DialogFooter>
@@ -372,6 +395,7 @@ export function UsersSection({
 				title={pending?.title ?? ""}
 				description={pending?.description ?? ""}
 				confirmLabel={pending?.confirmLabel ?? "Confirm"}
+				confirmVariant={pending?.confirmVariant}
 				onOpenChange={(next) => {
 					if (!next) {
 						setPending(null);

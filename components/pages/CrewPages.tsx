@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react"
 import { HistoryIcon } from "lucide-react"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 import { DataTable, DataTableActions } from "@/components/admin/DataTable"
 import { QueryState } from "@/components/data/QueryState"
 import { useMarineMutations } from "@/components/data/marine-mutations"
@@ -42,6 +43,7 @@ export function CrewWorkOrdersPage() {
   const [historyId, setHistoryId] = useState<string | null>(null)
   const [draft, setDraft] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [confirmSend, setConfirmSend] = useState(false)
   const mine = (ordersQuery.data ?? [])
     .filter((order) => order.assigneeId === memberId && order.status !== "closed")
     .sort((left, right) => right.code.localeCompare(left.code, undefined, { numeric: true }))
@@ -68,10 +70,24 @@ export function CrewWorkOrdersPage() {
     setHistoryId(null)
     setDraft("")
     setError(null)
+    setConfirmSend(false)
   }
 
-  async function send(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function requestSend(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault()
+    if (!selected || !memberId) {
+      return
+    }
+    const trimmed = draft.trim()
+    if (!trimmed) {
+      setError("Solution is required")
+      return
+    }
+    setError(null)
+    setConfirmSend(true)
+  }
+
+  async function send() {
     if (!selected || !memberId) {
       return
     }
@@ -206,7 +222,7 @@ export function CrewWorkOrdersPage() {
                         <HistoryIcon />
                       </Button>
                     </div>
-                    <form id="crew-solution-form" onSubmit={send}>
+                    <form id="crew-solution-form" onSubmit={requestSend}>
                       <Textarea
                         id="crew-solution"
                         value={draft}
@@ -226,9 +242,9 @@ export function CrewWorkOrdersPage() {
               ) : null}
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={closeSolutions}>
-                  Close
+                  Cancel
                 </Button>
-                <Button type="submit" form="crew-solution-form">
+                <Button type="button" variant="success" onClick={() => requestSend()}>
                   Send solution
                 </Button>
               </DialogFooter>
@@ -245,6 +261,26 @@ export function CrewWorkOrdersPage() {
               />
             </DialogContent>
           </Dialog>
+          <ConfirmDialog
+            open={confirmSend}
+            title="Send solution?"
+            description={
+              selected
+                ? `Send your solution for ${selected.code}? You can send another after a rejection.`
+                : "Send this solution?"
+            }
+            confirmLabel="Send solution"
+            confirmVariant="success"
+            onOpenChange={(next) => {
+              if (!next) {
+                setConfirmSend(false)
+              }
+            }}
+            onConfirm={() => {
+              setConfirmSend(false)
+              void send()
+            }}
+          />
         </section>
       )}
     </QueryState>

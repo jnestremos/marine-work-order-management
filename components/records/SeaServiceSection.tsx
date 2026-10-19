@@ -102,6 +102,7 @@ export function SeaServiceSection({
     title: string
     description: string
     confirmLabel: string
+    confirmVariant?: "default" | "destructive" | "success"
     run: () => void
   } | null>(null)
   const form = useForm<SeaServiceFormValues>({
@@ -171,7 +172,7 @@ export function SeaServiceSection({
     setOpen(true)
   }
 
-  async function save(values: SeaServiceFormValues) {
+  async function persist(values: SeaServiceFormValues) {
     const nextOwnerId = fixedMemberId ?? (scope === "directory" ? ownerId : member?.id)
     const owner = members.find((item) => item.id === nextOwnerId)
     if (!owner || owner.role === "admin") {
@@ -200,8 +201,45 @@ export function SeaServiceSection({
     close()
   }
 
+  function requestSave() {
+    form.clearErrors("root")
+    setOwnerError("")
+    const nextOwnerId = fixedMemberId ?? (scope === "directory" ? ownerId : member?.id)
+    const owner = members.find((item) => item.id === nextOwnerId)
+    if (showUser && (!owner || owner.role === "admin")) {
+      setOwnerError("Choose a captain or crew member")
+      return
+    }
+    void form.handleSubmit((values) => {
+      const name = vesselName(vessels, values.vesselId) || "this vessel"
+      setPending({
+        title: editing ? "Save voyage?" : "Add voyage?",
+        description: editing
+          ? `Save changes to the ${ROLE_LABELS[values.role]} voyage on ${name}?`
+          : `Add a ${ROLE_LABELS[values.role]} voyage on ${name}?`,
+        confirmLabel: editing ? "Save voyage" : "Add voyage",
+        confirmVariant: "success",
+        run: () => {
+          void persist(values)
+        },
+      })
+    }, () => form.clearErrors("root"))()
+  }
+
   function setStatus(record: SeaService, status: SeaServiceStatus) {
-    void mutations.setSeaServiceStatus(record.id, status)
+    const name = vesselName(vessels, record.vesselId) || "this vessel"
+    const accepting = status === "accepted"
+    setPending({
+      title: accepting ? "Accept voyage?" : "Reject voyage?",
+      description: accepting
+        ? `Accept the ${ROLE_LABELS[record.role]} voyage on ${name}?`
+        : `Reject the ${ROLE_LABELS[record.role]} voyage on ${name}?`,
+      confirmLabel: accepting ? "Accept" : "Reject",
+      confirmVariant: accepting ? "success" : "destructive",
+      run: () => {
+        void mutations.setSeaServiceStatus(record.id, status)
+      },
+    })
   }
 
   function remove(record: SeaService) {
@@ -352,6 +390,7 @@ export function SeaServiceSection({
                     title: "Remove sea service",
                     description: `Remove the ${ROLE_LABELS[record.role]} voyage on ${name}?`,
                     confirmLabel: "Remove",
+                    confirmVariant: "destructive",
                     run: () => remove(record),
                   }),
               }
@@ -399,8 +438,9 @@ export function SeaServiceSection({
           <form
             id="sea-service-form"
             onSubmit={(event) => {
+              event.preventDefault()
               event.stopPropagation()
-              void form.handleSubmit(save, () => form.clearErrors("root"))(event)
+              requestSave()
             }}
             className="flex flex-col gap-3"
           >
@@ -565,7 +605,9 @@ export function SeaServiceSection({
               <Button type="button" variant="outline" onClick={close}>
                 Cancel
               </Button>
-              <Button type="submit">{editing ? "Save voyage" : "Add voyage"}</Button>
+              <Button type="button" variant="success" onClick={requestSave}>
+                {editing ? "Save voyage" : "Add voyage"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -575,6 +617,7 @@ export function SeaServiceSection({
         title={pending?.title ?? ""}
         description={pending?.description ?? ""}
         confirmLabel={pending?.confirmLabel ?? "Confirm"}
+        confirmVariant={pending?.confirmVariant}
         onOpenChange={(next) => {
           if (!next) {
             setPending(null)

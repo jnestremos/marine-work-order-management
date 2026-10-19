@@ -16,6 +16,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  confirmVariant = "default",
   onConfirm,
   onOpenChange,
 }: {
@@ -23,17 +24,19 @@ export function ConfirmDialog({
   title: string
   description: string
   confirmLabel: string
+  confirmVariant?: "default" | "destructive" | "success"
   onConfirm: () => void
   onOpenChange: (open: boolean) => void
 }) {
-  const [shown, setShown] = useState({ title, description, confirmLabel })
+  const [shown, setShown] = useState({ title, description, confirmLabel, confirmVariant })
   if (
     open &&
     (shown.title !== title ||
       shown.description !== description ||
-      shown.confirmLabel !== confirmLabel)
+      shown.confirmLabel !== confirmLabel ||
+      shown.confirmVariant !== confirmVariant)
   ) {
-    setShown({ title, description, confirmLabel })
+    setShown({ title, description, confirmLabel, confirmVariant })
   }
 
   return (
@@ -47,7 +50,7 @@ export function ConfirmDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" onClick={onConfirm}>
+          <Button type="button" variant={shown.confirmVariant} onClick={onConfirm}>
             {shown.confirmLabel}
           </Button>
         </DialogFooter>

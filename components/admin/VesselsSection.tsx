@@ -66,6 +66,7 @@ export function VesselsSection({
     title: string
     description: string
     confirmLabel: string
+    confirmVariant?: "default" | "destructive" | "success"
     run: () => void
   } | null>(null)
   const [query, setQuery] = useState("")
@@ -114,13 +115,30 @@ export function VesselsSection({
     setOpen(true)
   }
 
-  async function onValid(values: VesselFormValues) {
+  async function persist(values: VesselFormValues) {
     const message = await onSave({ id: editingId ?? undefined, name: values.name })
     if (message) {
       setError("root", { message })
       return
     }
     closeModal()
+  }
+
+  function requestSave() {
+    clearErrors("root")
+    void handleSubmit((values) => {
+      setPending({
+        title: editingId ? "Save vessel?" : "Add vessel?",
+        description: editingId
+          ? `Save changes to ${values.name}?`
+          : `Create vessel ${values.name}?`,
+        confirmLabel: editingId ? "Save vessel" : "Add vessel",
+        confirmVariant: "success",
+        run: () => {
+          void persist(values)
+        },
+      })
+    }, () => clearErrors("root"))()
   }
 
   function confirmDialog() {
@@ -130,6 +148,7 @@ export function VesselsSection({
         title={pending?.title ?? ""}
         description={pending?.description ?? ""}
         confirmLabel={pending?.confirmLabel ?? "Confirm"}
+        confirmVariant={pending?.confirmVariant}
         onOpenChange={(next) => {
           if (!next) {
             setPending(null)
@@ -227,6 +246,7 @@ export function VesselsSection({
                           ? `Activate ${vessel.name}?`
                           : `Deactivate ${vessel.name}? Every assignment on this vessel will be removed.`,
                         confirmLabel: nextActive ? "Activate" : "Deactivate",
+                        confirmVariant: nextActive ? "success" : "destructive",
                         run: () => {
                           void onSetActive(vessel.id, nextActive).then(setActionError)
                         },
@@ -262,7 +282,10 @@ export function VesselsSection({
           </DialogHeader>
           <form
             id="vessel-form"
-            onSubmit={handleSubmit(onValid, () => clearErrors("root"))}
+            onSubmit={(event) => {
+              event.preventDefault()
+              requestSave()
+            }}
             className="flex flex-col gap-3"
           >
             <div className="flex flex-col gap-1">
@@ -343,6 +366,7 @@ export function VesselsSection({
                                   title: "Remove assignment",
                                   description: `Remove ${user} from ${vesselName}?`,
                                   confirmLabel: "Remove",
+                                  confirmVariant: "destructive",
                                   run: () => {
                                     void onRemoveAssignment(
                                       assignment.memberId,
@@ -364,14 +388,13 @@ export function VesselsSection({
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancel
             </Button>
-            <Button type="submit" form="vessel-form">
+            <Button type="button" variant="success" form="vessel-form" onClick={requestSave}>
               {editingId ? "Save vessel" : "Add vessel"}
             </Button>
           </DialogFooter>
-          {editingId ? confirmDialog() : null}
         </DialogContent>
       </Dialog>
-      {editingId ? null : confirmDialog()}
+      {confirmDialog()}
     </section>
   )
 }
