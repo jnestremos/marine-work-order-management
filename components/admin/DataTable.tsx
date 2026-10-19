@@ -91,13 +91,11 @@ export function DataTableActions({
     )
   }
 
-  const single = actions.length === 1
-
   return (
     <div
       className={cn(
-        "grid grid-cols-2 justify-items-center gap-2",
-        fit && "grid-cols-1",
+        "flex flex-wrap items-center justify-center gap-2",
+        fit && "flex-col",
       )}
     >
       {actions.map((action, index) => {
@@ -108,10 +106,7 @@ export function DataTableActions({
             type="button"
             variant={action.variant ?? "outline"}
             size="sm"
-            className={cn(
-              actionButtonClassName,
-              single && "col-span-2",
-            )}
+            className={actionButtonClassName}
             onClick={action.onClick}
           >
             {Icon ? <Icon data-icon="inline-start" /> : null}
