@@ -103,7 +103,9 @@ test.describe("role navigation regression", () => {
 })
 
 test.describe("work order business process", () => {
-  test("captain create → crew resolve → captain reject validation → attest", async ({ page }) => {
+  test("captain create → crew resolve → captain reject validation → attest → close", async ({
+    page,
+  }) => {
     const title = `E2E lifecycle ${Date.now()}`
 
     await setSession(page, {
@@ -151,6 +153,7 @@ test.describe("work order business process", () => {
     await page.goto("/captain/work-orders")
     const captainRow = page.locator("tr", { hasText: title })
     await expect(captainRow).toBeVisible()
+    await expect(captainRow.getByRole("button", { name: "Close", exact: true })).toHaveCount(0)
     await captainRow.getByRole("button", { name: "Reject" }).click()
     dialog = page.getByRole("dialog")
     await expect(dialog.getByRole("heading", { name: "Reject work order" })).toBeVisible()
@@ -164,14 +167,68 @@ test.describe("work order business process", () => {
     await expect(viewDialog).toBeVisible()
     await expect(viewDialog.getByText("Solution history")).toBeVisible()
     await expect(viewDialog.getByRole("columnheader", { name: /Solution/i }).first()).toBeVisible()
+    await expect(viewDialog.getByRole("button", { name: "Cancel", exact: true })).toBeVisible()
     await expect(viewDialog.getByRole("button", { name: "Attest", exact: true })).toBeVisible()
     await expect(viewDialog.getByRole("button", { name: "Reject", exact: true })).toBeVisible()
+    await expect(viewDialog.getByRole("button", { name: "Save work order", exact: true })).toBeVisible()
     await viewDialog.getByRole("button", { name: "Attest", exact: true }).click()
     await confirmDialog(page, "Attest work order?", "Attest")
     await expect(viewDialog).toBeHidden({ timeout: 20_000 })
     await expect(
       page.locator("tr", { hasText: title }).getByRole("button", { name: "Attest", exact: true }),
     ).toHaveCount(0, { timeout: 20_000 })
+
+    const acceptedRow = page.locator("tr", { hasText: title })
+    await expect(acceptedRow.getByText("Accepted")).toBeVisible({ timeout: 20_000 })
+    await acceptedRow.getByRole("button", { name: "View" }).click()
+    const closeDialog = page.getByRole("dialog").filter({ hasText: "View work order" })
+    await expect(closeDialog).toBeVisible()
+    const footerButtons = closeDialog.locator('[data-slot="dialog-footer"] button')
+    await expect(footerButtons.nth(0)).toHaveText("Cancel")
+    await expect(footerButtons.nth(1)).toHaveText("Close work order")
+    await expect(footerButtons.nth(2)).toHaveText("Save work order")
+    await closeDialog.getByRole("button", { name: "Close work order", exact: true }).click()
+    await confirmDialog(page, "Close work order?", "Close work order")
+    await expect(closeDialog).toBeHidden({ timeout: 20_000 })
+    await expect(page.locator("tr", { hasText: title }).getByText("Closed")).toBeVisible({
+      timeout: 20_000,
+    })
+
+    await setSession(page, {
+      vessel: "MV Horizon",
+      role: "Crew",
+      member: "Casey Nguyen",
+    })
+    await page.goto("/crew/work-orders")
+    await expect(page.locator("tr", { hasText: title })).toHaveCount(0)
+  })
+
+  test("cancelling a create confirmation leaves the work-order dialog open", async ({ page }) => {
+    await setSession(page, {
+      vessel: "MV Horizon",
+      role: "Captain",
+      member: "Blake Ortiz",
+    })
+    await page.goto("/captain/work-orders")
+    await page.getByRole("button", { name: "Add work order" }).click()
+
+    const dialog = page.getByRole("dialog").filter({ hasText: "Add work order" })
+    await expect(dialog).toBeVisible()
+    await dialog.getByLabel("Title").fill(`E2E cancel confirm ${Date.now()}`)
+    await dialog.getByLabel("Issue").fill("Should not be created when confirm is cancelled.")
+    await dialog.locator("#work-order-crew").click()
+    await page.getByRole("option", { name: "Casey Nguyen", exact: true }).click()
+    await dialog.getByRole("button", { name: "Add work order" }).click()
+
+    const confirm = page.getByRole("dialog").filter({
+      has: page.getByRole("heading", { name: "Add work order?", exact: true }),
+    })
+    await expect(confirm).toBeVisible()
+    await confirm.getByRole("button", { name: "Cancel", exact: true }).click()
+    await expect(confirm).toBeHidden()
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click()
+    await expect(dialog).toBeHidden()
   })
 })
 

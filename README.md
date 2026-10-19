@@ -37,11 +37,12 @@ Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind
 
 1. **Mock authentication** — sticky top bar with Vessel → Role → Member dropdowns. Selecting a member switches the session (cookie) and scopes UI + RLS headers (`x-marine-member-id`, `x-marine-role`, `x-marine-vessel-id`). Role options are vessel-scoped (only roles that have selectable members for that vessel).
 2. **Admin dashboard** — users, vessels, and vessel assignments with validation; duplicate names and unsafe deactivations are blocked in Postgres. Data tables fill the card on wide layouts (`w-full`) and use column `min-width`s plus horizontal scroll so headers stay readable on mobile.
-3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason, then **Close work order** to mark it `Closed`. The captain dialog shows the latest solution, an inline **solution history** table, Attest/Reject when `Done`, and Close when `Accepted` or `Rejected`.
-4. **Assignments ↔ service records** — assigning someone opens a service-record appointment; removing them (or setting a service-record end date) closes it and drops the assignment. Calendar date fields enforce real days and end ≥ start (UI `min`/`max` + Zod + Postgres checks).
-5. **Unassign / deactivate guards** — a captain or crew member cannot leave a vessel, and cannot be deactivated, while they still have `open`, `in_progress`, `done` (awaiting Attest/Reject), or `rejected` work orders. Marking a rejected (or accepted) order **Closed** clears that block. Vessel deactivation uses the same pending-work check. Closing a service record with an end date uses the unassign rule.
-6. **Browser Supabase client** — `lib/supabase/client.ts` + `lib/supabase/api.ts` load and mutate data; domain rules live in migrations under `supabase/migrations/`.
-7. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys (including service records after assign/unassign). The session bar uses a lightweight `session_choices` RPC. Loading states use skeleton placeholders in the main content area.
+3. **Work order lifecycle** — captains create and assign orders (`Open`); crew document a `Solution` (status moves through `In Progress` / `Done`); captains **Attest** (approve) or **Reject** with a required rejection reason, then **Close work order** to mark it `Closed`. The captain dialog shows the latest solution, an inline **solution history** table, Attest/Reject when `Done`, and **Close work order** when `Accepted` or `Rejected`. Footer CTAs are **Cancel**, then destructive **Close work order** (when available), then success **Save** / **Add**. Crew lists omit `Closed` orders.
+4. **Confirmation before CRUD** — create, update, delete, activate/deactivate, attest, close, and send-solution actions open a shared `ConfirmDialog` first (success or destructive variant). Reject still uses its reason dialog as the confirmation step.
+5. **Assignments ↔ service records** — assigning someone opens a service-record appointment; removing them (or setting a service-record end date) closes it and drops the assignment. Calendar date fields enforce real days and end ≥ start (UI `min`/`max` + Zod + Postgres checks).
+6. **Unassign / deactivate guards** — a captain or crew member cannot leave a vessel, and cannot be deactivated, while they still have `open`, `in_progress`, `done` (awaiting Attest/Reject), or `rejected` work orders. Marking a rejected (or accepted) order **Closed** clears that block. Vessel deactivation uses the same pending-work check. Closing a service record with an end date uses the unassign rule.
+7. **Browser Supabase client** — `lib/supabase/client.ts` + `lib/supabase/api.ts` load and mutate data; domain rules live in migrations under `supabase/migrations/`.
+8. **On-demand React Query** — pages fetch only the resources they need (`members`, `vessels`, `assignments`, `service-records`, `sea-services`, `work-orders`); mutations invalidate matching query keys (including service records after assign/unassign). The session bar uses a lightweight `session_choices` RPC. Loading states use skeleton placeholders in the main content area.
 
 ## Specification checks
 
@@ -193,8 +194,8 @@ erDiagram
 | Role | Focus |
 | --- | --- |
 | Admin | Users, vessels, assignments, sea service history; cannot remove or deactivate captain/crew until their outstanding, pending-approval, or rejected work orders are cleared |
-| Captain | Create work orders, **Attest** or **Reject** (with reason) when `Done`, view crew and solution history; cannot be unassigned or deactivated while vessel work they created is still open, in progress, awaiting approval, or rejected |
-| Crew | Assigned work orders, solutions, own records; cannot be unassigned or deactivated while their assigned orders are still open, in progress, awaiting approval, or rejected (must submit another solution) |
+| Captain | Create work orders, **Attest** or **Reject** (with reason) when `Done`, **Close work order** after accept/reject, view crew and solution history; cannot be unassigned or deactivated while vessel work they created is still open, in progress, awaiting approval, or rejected |
+| Crew | Assigned non-closed work orders, solutions, own records; cannot be unassigned or deactivated while their assigned orders are still open, in progress, awaiting approval, or rejected (must submit another solution) |
 
 ## Assumptions and decisions
 
@@ -232,9 +233,13 @@ The brief says statuses must be `Open`, `In Progress`, and `Done`, then also ask
 | `rejected` | Captain rejected — crew may submit another solution; still blocks unassign/deactivate until closed or accepted |
 | `closed` | Captain finalized the order after accept or reject; no longer blocks unassign/deactivate |
 
-Crew-facing labels still emphasize Open / In Progress / Done. Attest maps to `accepted`; **Close work order** maps to `closed`.
+Crew-facing labels still emphasize Open / In Progress / Done. Attest maps to `accepted`; **Close work order** maps to `closed`. Closed orders drop out of the crew work-order list.
 
 **Assumption:** Attest/Reject are review outcomes beyond the three operational statuses; `closed` is the terminal archive state after review.
+
+### Confirmation before mutations
+
+Every create/update/delete (and related status changes such as activate, attest, close, and send solution) asks for an explicit confirm in `ConfirmDialog`. Destructive confirms use the destructive button variant; create/update/approve use success. Work-order reject keeps a dedicated reason dialog instead of a second generic confirm.
 
 ### Solution as history, not a single field
 

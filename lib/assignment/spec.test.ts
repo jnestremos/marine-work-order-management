@@ -255,6 +255,63 @@ describe("assignment: browser Supabase client", () => {
     expect(captain).toMatch(/showSolution=\{Boolean\(editing\)\}/)
   })
 
+  it("confirms work-order save, close, and attest with Cancel → Close → Save CTAs", () => {
+    const dialog = readFileSync(
+      path.join(root, "components/work-orders/WorkOrderDialog.tsx"),
+      "utf8",
+    )
+    const captain = readFileSync(
+      path.join(root, "components/captain/CaptainWorkspace.tsx"),
+      "utf8",
+    )
+    const crew = readFileSync(path.join(root, "components/pages/CrewPages.tsx"), "utf8")
+    const confirm = readFileSync(
+      path.join(root, "components/admin/ConfirmDialog.tsx"),
+      "utf8",
+    )
+    expect(confirm).toMatch(/confirmVariant/)
+    expect(dialog).toMatch(/ConfirmDialog/)
+    expect(dialog).toMatch(/confirmAction === "close"/)
+    expect(dialog).toMatch(/confirmAction === "attest"/)
+    expect(dialog).toMatch(/confirmAction === "save"|setConfirmAction\("save"\)/)
+    expect(dialog).toMatch(/variant="destructive"[\s\S]*Close work order/)
+    expect(dialog).toMatch(/variant="success"[\s\S]*\{submitLabel\}/)
+    expect(dialog.indexOf("Cancel")).toBeLessThan(dialog.indexOf("Close work order"))
+    expect(dialog.indexOf("Close work order")).toBeLessThan(dialog.lastIndexOf("submitLabel"))
+    expect(captain).toMatch(/ConfirmDialog/)
+    expect(captain).toMatch(/Attest work order\?/)
+    expect(captain).not.toMatch(/label:\s*"Close"/)
+    expect(crew).toMatch(/status !== "closed"/)
+    expect(crew).toMatch(/Send solution\?/)
+  })
+
+  it("requires ConfirmDialog before admin and sea-service CRUD mutations", () => {
+    const users = readFileSync(path.join(root, "components/admin/UsersSection.tsx"), "utf8")
+    const vessels = readFileSync(path.join(root, "components/admin/VesselsSection.tsx"), "utf8")
+    const assignments = readFileSync(
+      path.join(root, "components/admin/AssignmentsSection.tsx"),
+      "utf8",
+    )
+    const records = readFileSync(
+      path.join(root, "components/admin/MemberRecordTables.tsx"),
+      "utf8",
+    )
+    const sea = readFileSync(
+      path.join(root, "components/records/SeaServiceSection.tsx"),
+      "utf8",
+    )
+    for (const source of [users, vessels, assignments, records, sea]) {
+      expect(source).toMatch(/ConfirmDialog/)
+      expect(source).toMatch(/confirmVariant/)
+    }
+    expect(users).toMatch(/Save user\?|Add user\?/)
+    expect(vessels).toMatch(/Save vessel\?|Add vessel\?/)
+    expect(assignments).toMatch(/Add assignment\?/)
+    expect(records).toMatch(/Save record\?/)
+    expect(sea).toMatch(/Save voyage\?|Add voyage\?/)
+    expect(sea).toMatch(/Accept voyage\?|Reject voyage\?/)
+  })
+
   it("fetches marine resources on demand with TanStack Query", () => {
     const queries = readFileSync(
       path.join(root, "components/data/marine-queries.ts"),
@@ -325,10 +382,35 @@ describe("assignment: documentation deliverables", () => {
     expect(schema).toMatch(/Setting an end date removes the matching vessel assignment/)
   })
 
+  it("models closed work orders as a terminal review outcome in schema and migrations", () => {
+    const schema = readFileSync(path.join(root, "schema.sql"), "utf8")
+    const closedStatus = readFileSync(
+      path.join(root, "supabase/migrations/20261019121847_add_closed_work_order_status.sql"),
+      "utf8",
+    )
+    const closeRules = readFileSync(
+      path.join(root, "supabase/migrations/20261019121848_close_work_order_rules.sql"),
+      "utf8",
+    )
+    expect(schema).toMatch(/'closed'/)
+    expect(schema).toMatch(/new\.status = 'closed'/)
+    expect(closedStatus).toMatch(/add value if not exists 'closed'/)
+    expect(closeRules).toMatch(/accepted.*rejected|rejected.*accepted/i)
+    expect(closeRules).toMatch(/closed/)
+  })
+
   it("documents the ERD in README.md", () => {
     const readme = readFileSync(path.join(root, "README.md"), "utf8")
     expect(readme).toMatch(/erDiagram|Entity Relationship|## ERD/i)
     expect(readme).toMatch(/members|vessels|work_orders/)
+  })
+
+  it("documents confirmation dialogs and closed work-order UX in README.md", () => {
+    const readme = readFileSync(path.join(root, "README.md"), "utf8")
+    expect(readme).toMatch(/[Cc]onfirmation/)
+    expect(readme).toMatch(/Close work order/)
+    expect(readme).toMatch(/Closed/)
+    expect(readme).toMatch(/ConfirmDialog|confirm before/i)
   })
 
   it("lists the public GitHub repository in the submission table", () => {
