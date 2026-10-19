@@ -9,7 +9,7 @@ Built with **Next.js** (App Router), **TypeScript**, **Tailwind / shadcn**, and 
 | Deliverable | Link |
 | --- | --- |
 | Public GitHub repository | https://github.com/jnestremos/marine-work-order-management |
-| Live production URL | _Not deployed yet — add the HTTPS URL after you publish_ |
+| Live production URL | https://marine-work-order-management-theta.vercel.app |
 | Database schema | [`schema.sql`](./schema.sql) |
 | ERD | See [Entity relationship diagram](#erd) below |
 
@@ -232,14 +232,8 @@ Demo data is loaded in SQL migrations with triggers paused so historical codes, 
 
 ### Deployment
 
-Cloudflare Workers (OpenNext):
-
-| Setting | Value |
-| --- | --- |
-| Build command | `pnpm run build:worker` |
-| Deploy command | `npx wrangler deploy` |
-
-Or locally: `pnpm run deploy`. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` as Workers build vars / secrets.
+Hosted on Vercel: https://marine-work-order-management-theta.vercel.app  
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the Vercel project environment (Production).
 
 ## License
 
