@@ -53,7 +53,11 @@ type MarineState = {
     id: string,
     input: { title: string; issue: string; assigneeId: string },
   ) => Promise<string | null>
-  reviewWorkOrder: (id: string, status: "accepted" | "rejected") => Promise<string | null>
+  reviewWorkOrder: (
+    id: string,
+    status: "accepted" | "rejected",
+    note?: string,
+  ) => Promise<string | null>
   submitSolution: (orderId: string, memberId: string, text: string) => Promise<string | null>
 }
 

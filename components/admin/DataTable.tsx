@@ -46,6 +46,7 @@ const actionIcons: Record<string, LucideIcon> = {
   Deactivate: BanIcon,
   Activate: CircleCheckIcon,
   Accept: CircleCheckIcon,
+  Attest: CircleCheckIcon,
   Reject: CircleXIcon,
   Remove: Trash2Icon,
 }

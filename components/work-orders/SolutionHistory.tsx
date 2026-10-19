@@ -41,6 +41,12 @@ export function SolutionHistory({ solutions }: { solutions: WorkOrderSolution[] 
             cell: (solution) => solution.text,
           },
           {
+            header: "Rejection reason",
+            wrap: true,
+            value: (solution) => solution.reviewNote ?? "",
+            cell: (solution) => solution.reviewNote ?? "—",
+          },
+          {
             header: "Date posted",
             width: "w-44",
             value: (solution) => solution.postedAt,

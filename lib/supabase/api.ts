@@ -8,6 +8,7 @@ import type {
   ServiceRecord,
   Vessel,
 } from "@/lib/session/types"
+import { rejectionReasonBlock } from "@/lib/work-orders/review"
 import type { WorkOrder, WorkOrderSolution, WorkOrderStatus } from "@/lib/work-orders/types"
 
 function failure(error: { message: string } | null): string | null {
@@ -48,6 +49,7 @@ type SolutionRow = {
   body: string
   status: WorkOrderSolution["status"]
   posted_at: string
+  review_note: string | null
 }
 type OrderRow = {
   id: string
@@ -112,6 +114,7 @@ function toOrder(row: OrderRow): WorkOrder {
       text: solution.body,
       status: solution.status,
       postedAt: solution.posted_at,
+      reviewNote: solution.review_note ?? undefined,
     }))
   return {
     id: row.id,
@@ -164,7 +167,7 @@ export async function loadMarineData(): Promise<{
         "id, member_id, vessel_id, role, sign_on_date, sign_on_port, sign_off_date, sign_off_port, status",
       ),
     supabase.from("work_orders").select(
-      "id, code, vessel_id, title, issue, status, assignee_id, created_by_id, work_order_solutions(id, body, status, posted_at)",
+      "id, code, vessel_id, title, issue, status, assignee_id, created_by_id, work_order_solutions(id, body, status, posted_at, review_note)",
     ),
   ])
   const error =
@@ -366,7 +369,36 @@ export async function updateWorkOrder(
 export async function reviewWorkOrder(
   id: string,
   status: "accepted" | "rejected",
+  note?: string,
 ): Promise<string | null> {
+  if (status === "rejected") {
+    const blocked = rejectionReasonBlock(note)
+    if (blocked) {
+      return blocked
+    }
+    const reason = note!.trim()
+    const latest = await supabase
+      .from("work_order_solutions")
+      .select("id")
+      .eq("work_order_id", id)
+      .order("posted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (latest.error) {
+      return latest.error.message
+    }
+    if (!latest.data) {
+      return "Accept or reject a work order only when it is done and the latest solution is pending"
+    }
+    const noted = await supabase
+      .from("work_order_solutions")
+      .update({ review_note: reason })
+      .eq("id", latest.data.id)
+    const notedMessage = failure(noted.error)
+    if (notedMessage) {
+      return notedMessage
+    }
+  }
   const result = await supabase.from("work_orders").update({ status }).eq("id", id)
   return failure(result.error)
 }

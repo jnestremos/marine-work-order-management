@@ -7,6 +7,7 @@ export type WorkOrderSolution = {
   text: string
   status: SolutionStatus
   postedAt: string
+  reviewNote?: string
 }
 
 export type WorkOrder = {

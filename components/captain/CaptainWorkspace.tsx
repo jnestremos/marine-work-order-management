@@ -4,8 +4,17 @@ import { useState } from "react"
 import { DataTable, DataTableActions, type DataTableAction } from "@/components/admin/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { useMarine } from "@/components/data/MarineProvider"
 import { WorkOrderDialog } from "@/components/work-orders/WorkOrderDialog"
 import type { WorkOrderFormValues } from "@/lib/work-orders/schema"
@@ -65,7 +74,11 @@ function VesselOrders({
     id: string,
     input: { title: string; issue: string; assigneeId: string },
   ) => Promise<string | null>
-  onReview: (id: string, status: "accepted" | "rejected") => Promise<string | null>
+  onReview: (
+    id: string,
+    status: "accepted" | "rejected",
+    note?: string,
+  ) => Promise<string | null>
 }) {
   const marine = useMarine()
   const crew = marine.members
@@ -80,14 +93,35 @@ function VesselOrders({
   const editing = orders.find((order) => order.id === editingId) ?? null
   const crewLocked = editing?.status === "done"
   const [query, setQuery] = useState("")
+  const [rejectId, setRejectId] = useState<string | null>(null)
+  const [rejectNote, setRejectNote] = useState("")
+  const [rejectError, setRejectError] = useState<string | null>(null)
   const normalizedQuery = query.trim().toLowerCase()
   const visible = normalizedQuery
     ? orders.filter((order) => order.title.toLowerCase().includes(normalizedQuery))
     : orders
+  const rejecting = orders.find((order) => order.id === rejectId) ?? null
 
   function closeModal() {
     setOpen(false)
     setEditingId(null)
+  }
+
+  function closeReject() {
+    setRejectId(null)
+    setRejectNote("")
+    setRejectError(null)
+  }
+
+  async function confirmReject() {
+    if (!rejectId) {
+      return
+    }
+    const message = await onReview(rejectId, "rejected", rejectNote)
+    setRejectError(message)
+    if (!message) {
+      closeReject()
+    }
   }
 
   function openEdit(order: WorkOrder) {
@@ -197,7 +231,7 @@ function VesselOrders({
               if (order.status === "done") {
                 actions.push(
                   {
-                    label: "Accept",
+                    label: "Attest",
                     variant: "success",
                     onClick: () => {
                       void onReview(order.id, "accepted")
@@ -207,7 +241,9 @@ function VesselOrders({
                     label: "Reject",
                     variant: "destructive",
                     onClick: () => {
-                      void onReview(order.id, "rejected")
+                      setRejectId(order.id)
+                      setRejectNote("")
+                      setRejectError(null)
                     },
                   },
                 )
@@ -240,6 +276,48 @@ function VesselOrders({
           }
         }}
       />
+      <Dialog
+        open={rejecting !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            closeReject()
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject work order</DialogTitle>
+            <DialogDescription>
+              {rejecting
+                ? `Send ${rejecting.code} back to crew with a rejection reason.`
+                : "A rejection reason is required."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="rejection-reason">Rejection reason</Label>
+            <Textarea
+              id="rejection-reason"
+              value={rejectNote}
+              onChange={(event) => setRejectNote(event.target.value)}
+              placeholder="Explain what the crew should fix"
+              rows={4}
+            />
+            {rejectError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {rejectError}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeReject}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void confirmReject()}>
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }
